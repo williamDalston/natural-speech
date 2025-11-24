@@ -359,9 +359,43 @@ When the backend is running, visit:
 
 ## 🚢 Production Deployment
 
-For production deployment, see the deployment guide in the project documentation.
+### Quick Deploy from GitHub
 
-Key considerations:
+The project automatically builds Docker images on every push to `main` or `develop` branches. Images are available at:
+- `ghcr.io/williamdalston/natural-speech-backend:latest`
+- `ghcr.io/williamdalston/natural-speech-frontend:latest`
+
+**Deploy from GitHub branch:**
+```bash
+# Clone and deploy
+git clone https://github.com/williamDalston/natural-speech.git
+cd natural-speech
+git checkout main
+docker-compose up -d
+```
+
+**Or use pre-built images:**
+```bash
+# Update docker-compose.yml to use GitHub images
+docker-compose pull
+docker-compose up -d
+```
+
+### Automatic Deployment
+
+Set up automatic deployment by configuring GitHub Secrets (see [Deployment Guide](docs/DEPLOYMENT_FROM_GITHUB.md)):
+- Deploy to your server via SSH
+- Deploy frontend to Vercel/Netlify
+- Custom deployment targets
+
+### Manual Deployment
+
+For detailed deployment instructions, see:
+- [Backend Deployment Guide](backend/DEPLOYMENT.md)
+- [Frontend Deployment Guide](frontend/DEPLOYMENT.md)
+- [Deploying from GitHub](docs/DEPLOYMENT_FROM_GITHUB.md)
+
+### Key Considerations:
 - Set `DEBUG=False` in backend `.env`
 - Use production build for frontend: `npm run build`
 - Configure proper CORS origins
