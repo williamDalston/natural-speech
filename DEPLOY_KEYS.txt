@@ -1,0 +1,86 @@
+================================================================================
+GITHUB SECRETS - DEPLOYMENT KEYS
+================================================================================
+
+IMPORTANT: Keep this file secure! Delete it after adding to GitHub Secrets.
+================================================================================
+
+1. DEPLOY_HOST
+   Value: [YOUR_SERVER_IP_OR_HOSTNAME]
+   
+   Examples:
+   - 192.168.1.100
+   - 203.0.113.42
+   - myserver.example.com
+   
+   How to get it:
+   ssh into your server and run: hostname -I
+   Or check your server provider's dashboard for the IP address.
+
+================================================================================
+
+2. DEPLOY_USER
+   Value: [YOUR_SSH_USERNAME]
+   
+   Common values:
+   - ubuntu (for Ubuntu servers)
+   - centos (for CentOS servers)
+   - root (if using root user)
+   - deploy (custom user)
+   
+   How to find it:
+   ssh into your server and run: whoami
+
+================================================================================
+
+3. DEPLOY_SSH_KEY
+   Value: [PRIVATE KEY BELOW - COPY ENTIRE KEY INCLUDING BEGIN/END LINES]
+   
+   ⚠️  COPY THE ENTIRE KEY FROM THE FILE:
+   ~/.ssh/github_deploy_natural_speech
+   
+   The key starts with: -----BEGIN OPENSSH PRIVATE KEY-----
+   And ends with: -----END OPENSSH PRIVATE KEY-----
+   
+   Include both lines and everything in between!
+
+================================================================================
+
+4. PUBLIC KEY (to add to your server)
+   
+   ⚠️  ADD THIS TO YOUR SERVER'S ~/.ssh/authorized_keys
+   
+   File location: ~/.ssh/github_deploy_natural_speech.pub
+   
+   Command to add to server:
+   ssh-copy-id -i ~/.ssh/github_deploy_natural_speech.pub YOUR_USER@YOUR_SERVER_IP
+   
+   Or manually:
+   1. Copy the public key content below
+   2. SSH into your server
+   3. Run: mkdir -p ~/.ssh && chmod 700 ~/.ssh
+   4. Run: echo "PUBLIC_KEY_CONTENT" >> ~/.ssh/authorized_keys
+   5. Run: chmod 600 ~/.ssh/authorized_keys
+
+================================================================================
+
+NEXT STEPS:
+================================================================================
+
+1. Get your server IP and username (fill in DEPLOY_HOST and DEPLOY_USER above)
+
+2. Add the public key to your server:
+   ssh-copy-id -i ~/.ssh/github_deploy_natural_speech.pub YOUR_USER@YOUR_SERVER_IP
+
+3. Test the connection:
+   ssh -i ~/.ssh/github_deploy_natural_speech YOUR_USER@YOUR_SERVER_IP
+
+4. Add secrets to GitHub:
+   - Go to: https://github.com/williamDalston/natural-speech/settings/secrets/actions
+   - Click "New repository secret"
+   - Add each secret with the exact names shown above
+
+5. Delete this file after adding secrets to GitHub (for security)
+
+================================================================================
+
