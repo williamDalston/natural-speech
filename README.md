@@ -245,6 +245,51 @@ pip install -r requirements-dev.txt
 - **Backend**: Follow PEP 8 style guide
 - **Frontend**: Use ESLint and Prettier (configured in package.json)
 
+### Testing
+
+Run all tests:
+
+```bash
+# Run comprehensive test suite
+./run_tests.sh
+
+# Or run individually
+./run_tests.sh backend    # Backend tests only
+./run_tests.sh frontend   # Frontend tests only
+./run_tests.sh validate   # Project validation only
+```
+
+**Backend Tests:**
+```bash
+cd backend
+pytest tests/ -v                    # All tests
+pytest tests/ -m unit                # Unit tests only
+pytest tests/ -m integration         # Integration tests only
+pytest tests/ -m performance         # Performance tests
+```
+
+**Frontend Tests:**
+```bash
+cd frontend
+npm test                    # Component tests
+npm run test:e2e            # E2E tests (requires servers running)
+npm run test:coverage       # Tests with coverage
+```
+
+### Project Validation
+
+Validate project structure and configuration:
+
+```bash
+python3 validate_project.py
+```
+
+This script checks:
+- All required files and directories exist
+- Critical imports work correctly
+- Configuration files are present
+- Documentation is complete
+
 ## 🐛 Troubleshooting
 
 ### Backend Issues
