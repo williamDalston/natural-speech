@@ -41,9 +41,11 @@ To automatically deploy to your server when pushing to a branch:
 
 Go to your repository → Settings → Secrets and variables → Actions, and add:
 
-- `DEPLOY_HOST`: Your server IP or hostname
-- `DEPLOY_USER`: SSH username (e.g., `ubuntu`, `root`)
-- `DEPLOY_SSH_KEY`: Your private SSH key for deployment
+- `DEPLOY_HOST`: Your server IP or hostname (e.g., `192.168.1.100` or `myserver.com`)
+- `DEPLOY_USER`: SSH username (e.g., `ubuntu`, `root`, `deploy`)
+- `DEPLOY_SSH_KEY`: Your private SSH key for deployment (entire key content)
+
+**📖 For detailed instructions with examples, see [GitHub Secrets Setup Guide](GITHUB_SECRETS_SETUP.md)**
 
 #### Step 2: Server Setup
 

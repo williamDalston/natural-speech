@@ -65,16 +65,16 @@ jobs:
           cache-to: type=gha,mode=max
       
       - name: Deploy to server (if configured)
-        if: ${{ secrets.DEPLOY_HOST }}
+        if: ${{ secrets.DEPLOY_HOST && secrets.DEPLOY_USER && secrets.DEPLOY_SSH_KEY }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd /opt/natural-speech
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-            docker-compose up -d backend
+            cd /opt/natural-speech || mkdir -p /opt/natural-speech && cd /opt/natural-speech
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest || echo "Image pull failed, will build locally"
+            docker-compose -f docker-compose.yml up -d backend || docker-compose up -d backend
 
   deploy-frontend:
     name: Deploy Frontend
@@ -147,16 +147,16 @@ jobs:
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
       
       - name: Deploy to server (if configured)
-        if: ${{ secrets.DEPLOY_HOST }}
+        if: ${{ secrets.DEPLOY_HOST && secrets.DEPLOY_USER && secrets.DEPLOY_SSH_KEY }}
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd /opt/natural-speech
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-            docker-compose up -d frontend
+            cd /opt/natural-speech || mkdir -p /opt/natural-speech && cd /opt/natural-speech
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest || echo "Image pull failed, will build locally"
+            docker-compose -f docker-compose.yml up -d frontend || docker-compose up -d frontend
 
   deploy-complete:
     name: Deployment Complete
