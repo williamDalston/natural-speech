@@ -359,6 +359,20 @@ When the backend is running, visit:
 
 ## 🚢 Production Deployment
 
+### 🆓 Free Public Deployment (Recommended)
+
+**Deploy for FREE in 5 minutes so anyone can use it!**
+
+See **[SIMPLE_PUBLIC_DEPLOY.md](SIMPLE_PUBLIC_DEPLOY.md)** for step-by-step instructions.
+
+**Quick options:**
+- ✅ **Vercel** (Frontend) + **Railway** (Backend) - Easiest!
+- ✅ **Netlify** (Frontend) + **Railway** (Backend) - Also free!
+
+Both are completely free, no credit card needed, and auto-deploy from GitHub!
+
+---
+
 ### Quick Deploy from GitHub
 
 The project automatically builds Docker images on every push to `main` or `develop` branches. Images are available at:
