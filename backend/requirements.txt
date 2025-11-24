@@ -1,5 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 kokoro-onnx
 soundfile
 numpy<2.0
@@ -7,4 +8,11 @@ python-multipart
 torch
 torchvision
 torchaudio
+slowapi
+python-magic-bin
+sqlalchemy
+psutil
+loguru
+python-dotenv
+requests
 --extra-index-url https://download.pytorch.org/whl/cpu

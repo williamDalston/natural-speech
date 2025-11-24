@@ -42,3 +42,95 @@ body {
 .btn-primary {
   @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
 }
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Focus visible styles for better accessibility */
+*:focus-visible {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-gray-900;
+}
+
+/* Smooth transitions for interactive elements */
+button, a, input, select, textarea {
+  @apply transition-all duration-200;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .glass-card {
+    @apply p-4;
+  }
+  
+  .input-field {
+    @apply text-base; /* Prevents zoom on iOS */
+  }
+}
+
+/* Touch-friendly targets */
+@media (hover: none) and (pointer: coarse) {
+  button, a {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
+/* Keyboard shortcut indicator */
+kbd {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Skip to main content link for accessibility */
+.skip-link {
+  @apply absolute -top-full left-0 z-50 bg-blue-600 text-white px-4 py-2 rounded-b-lg focus:top-0;
+}
+
+/* Better selection colors */
+::selection {
+  @apply bg-blue-500/30 text-white;
+}
+
+::-moz-selection {
+  @apply bg-blue-500/30 text-white;
+}
+
+/* Smooth page transitions */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .glass-card,
+  .sidebar,
+  button,
+  .skip-link {
+    display: none;
+  }
+}

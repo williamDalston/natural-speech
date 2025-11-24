@@ -34,12 +34,16 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                         Natural AI
                     </h1>
-                    <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                    <button 
+                        onClick={() => setIsOpen(false)} 
+                        className="md:hidden text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
+                        aria-label="Close sidebar"
+                    >
                         <X size={24} />
                     </button>
                 </div>
 
-                <nav className="mt-8 px-4 space-y-2">
+                <nav className="mt-8 px-4 space-y-2" aria-label="Main navigation">
                     {menuItems.map((item) => (
                         <button
                             key={item.id}
@@ -47,12 +51,15 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                                 setActiveTab(item.id);
                                 setIsOpen(false);
                             }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === item.id
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                activeTab === item.id
                                     ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-400 border border-blue-500/30'
                                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                                }`}
+                            }`}
+                            aria-current={activeTab === item.id ? 'page' : undefined}
+                            aria-label={`Switch to ${item.label}`}
                         >
-                            <item.icon size={20} />
+                            <item.icon size={20} aria-hidden="true" />
                             <span className="font-medium">{item.label}</span>
                         </button>
                     ))}
@@ -89,7 +96,9 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                 <header className="h-16 border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-md sticky top-0 z-30 px-4 flex items-center justify-between md:justify-end">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        className="md:hidden text-gray-400 hover:text-white"
+                        className="md:hidden text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
+                        aria-label="Open sidebar"
+                        aria-expanded={isSidebarOpen}
                     >
                         <Menu size={24} />
                     </button>
@@ -100,8 +109,13 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                     </div>
                 </header>
 
+                {/* Skip to main content link */}
+                <a href="#main-content" className="skip-link">
+                    Skip to main content
+                </a>
+
                 {/* Main Content */}
-                <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+                <main id="main-content" className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full" role="main">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeTab}

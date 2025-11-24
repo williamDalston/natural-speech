@@ -1,3 +1,17 @@
+"""
+Avatar Generation Service
+
+This module provides a wrapper around the SadTalker avatar generation system.
+It handles running the SadTalker inference script as a subprocess to generate
+talking avatar videos from audio and image inputs.
+
+Note: This service uses subprocess calls rather than direct imports to avoid
+conflicts with the complex research code dependencies.
+
+Example:
+    service = AvatarService()
+    video_path = service.generate_avatar("/path/to/audio.wav", "/path/to/image.png")
+"""
 import os
 import sys
 import torch
@@ -15,12 +29,35 @@ import subprocess
 
 class AvatarService:
     def __init__(self, base_path="SadTalker"):
+        """
+        Initialize the Avatar service.
+        
+        Args:
+            base_path: Path to the SadTalker directory containing inference.py
+        """
         self.base_path = base_path
         self.checkpoints_dir = os.path.join(base_path, "checkpoints")
         self.results_dir = os.path.join(base_path, "results")
         os.makedirs(self.results_dir, exist_ok=True)
 
     def generate_avatar(self, audio_path, image_path):
+        """
+        Generate a talking avatar video from audio and image inputs.
+        
+        This method runs the SadTalker inference script as a subprocess to
+        generate the video. The result is saved in the results directory with
+        a timestamp-based folder structure.
+        
+        Args:
+            audio_path: Absolute path to the input audio file (WAV format)
+            image_path: Absolute path to the input image file (PNG/JPG)
+            
+        Returns:
+            str: Path to the generated video file (MP4)
+            
+        Raises:
+            Exception: If subprocess fails or result file is not found
+        """
         # Construct command to run inference.py
         # python inference.py --driven_audio <audio> --source_image <image> --result_dir <results> --still --preprocess full --enhancer gfpgan
         
