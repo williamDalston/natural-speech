@@ -1,0 +1,18 @@
+# Exclude backend and large files from Vercel deployment
+backend/
+*.onnx
+*.pth
+*.safetensors
+*.bin
+*.npy
+SadTalker/
+test_audio*.wav
+__pycache__/
+*.pyc
+venv/
+.venv/
+node_modules/
+.git/
+*.log
+.DS_Store
+

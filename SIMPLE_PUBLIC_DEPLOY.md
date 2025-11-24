@@ -16,21 +16,23 @@ Deploy Natural Speech for FREE so anyone can use it!
 
 ### Step 1: Deploy Frontend (2 minutes)
 
+⚠️ **IMPORTANT:** Vercel is for FRONTEND ONLY. Backend goes to Railway (Step 2).
+
 1. Go to: https://vercel.com
 2. Click **"Sign up"** → Sign in with GitHub
 3. Click **"Add New Project"**
 4. Import your repository: `williamDalston/natural-speech`
 5. Set these settings:
-   - **Root Directory:** `frontend`
+   - **Root Directory:** `frontend` ⚠️ **CRITICAL - Must be `frontend`**
    - **Framework Preset:** Vite
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-6. Add Environment Variable:
-   - **Name:** `VITE_API_BASE_URL`
-   - **Value:** `https://your-backend-url.railway.app/api` (we'll get this in Step 2)
+   - **Build Command:** `npm run build` (or leave default)
+   - **Output Directory:** `dist` (or leave default)
+6. **Skip environment variable for now** (we'll add it after backend is deployed)
 7. Click **"Deploy"**
 
 ✅ **Frontend is now live!** (e.g., `https://natural-speech.vercel.app`)
+
+**Note:** If you get a size error, make sure Root Directory is set to `frontend` - this excludes the large backend files.
 
 ### Step 2: Deploy Backend (3 minutes)
 

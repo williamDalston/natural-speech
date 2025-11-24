@@ -4,6 +4,7 @@
   "devCommand": "cd frontend && npm run dev",
   "installCommand": "cd frontend && npm install",
   "framework": "vite",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./frontend",
   "rewrites": [
     {
       "source": "/(.*)",
