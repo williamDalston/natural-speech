@@ -1,0 +1,82 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:0.1" />
+    </linearGradient>
+    <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.12" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.08" />
+    </linearGradient>
+    <linearGradient id="penGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background subtle shapes -->
+  <circle cx="150" cy="100" r="80" fill="url(#gradient1)" opacity="0.6"/>
+  <circle cx="650" cy="450" r="100" fill="url(#gradient2)" opacity="0.5"/>
+  <ellipse cx="700" cy="150" rx="60" ry="90" fill="url(#gradient1)" opacity="0.4"/>
+  
+  <!-- Geometric decorative elements -->
+  <polygon points="100,200 140,160 180,200 140,240" fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.2"/>
+  <polygon points="650,300 690,260 730,300 690,340" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity="0.2"/>
+  <rect x="50" y="450" width="80" height="80" fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.15" transform="rotate(45 90 490)"/>
+  
+  <!-- Main pen illustration -->
+  <g transform="translate(400, 200)">
+    <!-- Pen body -->
+    <rect x="-15" y="-80" width="30" height="160" rx="15" fill="url(#penGradient)" filter="url(#glow)"/>
+    <rect x="-12" y="-75" width="24" height="150" rx="12" fill="url(#penGradient)" opacity="0.8"/>
+    
+    <!-- Pen nib -->
+    <path d="M -10 -80 L 0 -95 L 10 -80 Z" fill="#1e40af" opacity="0.9"/>
+    <line x1="0" y1="-95" x2="0" y2="-100" stroke="#60a5fa" stroke-width="2" opacity="0.6"/>
+    
+    <!-- Pen cap highlight -->
+    <ellipse cx="0" cy="-70" rx="8" ry="20" fill="#60a5fa" opacity="0.4"/>
+    <ellipse cx="0" cy="-70" rx="5" ry="15" fill="#93c5fd" opacity="0.6"/>
+    
+    <!-- Ink drop effect -->
+    <ellipse cx="0" cy="85" rx="12" ry="20" fill="#3b82f6" opacity="0.3"/>
+    <ellipse cx="0" cy="90" rx="8" ry="15" fill="#3b82f6" opacity="0.5"/>
+  </g>
+  
+  <!-- Paper with text lines -->
+  <g transform="translate(350, 300)">
+    <rect x="-80" y="-40" width="160" height="200" rx="4" fill="#1f2937" opacity="0.7" stroke="#3b82f6" stroke-width="1" opacity="0.3"/>
+    <rect x="-75" y="-35" width="150" height="190" rx="2" fill="#111827" opacity="0.8"/>
+    
+    <!-- Text lines -->
+    <line x1="-70" y1="-20" x2="65" y2="-20" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    <line x1="-70" y1="0" x2="55" y2="0" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    <line x1="-70" y1="20" x2="70" y2="20" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    <line x1="-70" y1="40" x2="50" y2="40" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    <line x1="-70" y1="60" x2="65" y2="60" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    <line x1="-70" y1="80" x2="55" y2="80" stroke="#3b82f6" stroke-width="1.5" opacity="0.3" stroke-dasharray="5,3"/>
+    
+    <!-- Subtle corner fold -->
+    <path d="M 70 -40 L 75 -45 L 75 -35 Z" fill="#374151" opacity="0.5"/>
+  </g>
+  
+  <!-- Floating particles/highlights -->
+  <circle cx="200" cy="180" r="3" fill="#60a5fa" opacity="0.4" filter="url(#glow)"/>
+  <circle cx="600" cy="320" r="2.5" fill="#a78bfa" opacity="0.5" filter="url(#glow)"/>
+  <circle cx="300" cy="480" r="2" fill="#3b82f6" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="550" cy="120" r="3.5" fill="#60a5fa" opacity="0.3" filter="url(#glow)"/>
+  <circle cx="150" cy="380" r="2" fill="#8b5cf6" opacity="0.4" filter="url(#glow)"/>
+  
+  <!-- Subtle connecting lines -->
+  <line x1="200" y1="180" x2="380" y2="200" stroke="#3b82f6" stroke-width="0.5" opacity="0.1"/>
+  <line x1="600" y1="320" x2="450" y2="300" stroke="#8b5cf6" stroke-width="0.5" opacity="0.1"/>
+</svg>
+

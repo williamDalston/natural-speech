@@ -19,7 +19,9 @@ ALLOWED_IMAGE_MIME_TYPES = {
 
 # File size limits (in bytes)
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
-MAX_TEXT_LENGTH = 5000
+# Text length limit removed - TTS service now handles text of any length
+# through intelligent chunking
+MAX_TEXT_LENGTH = None  # No limit
 
 
 def validate_image_file(file, max_size: int = MAX_IMAGE_SIZE) -> Tuple[bool, Optional[str]]:

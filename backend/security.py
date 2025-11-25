@@ -52,14 +52,14 @@ def validate_file_upload(file: UploadFile, max_size: Optional[int] = None) -> No
         )
 
 
-def validate_text_input(text: str, min_length: int = 1, max_length: int = 5000) -> None:
+def validate_text_input(text: str, min_length: int = 1, max_length: Optional[int] = None) -> None:
     """
     Validate text input for TTS.
     
     Args:
         text: The text to validate
-        min_length: Minimum text length
-        max_length: Maximum text length
+        min_length: Minimum text length (default: 1)
+        max_length: Maximum text length (optional, no limit if None)
     
     Raises:
         ValidationException: If text validation fails
@@ -73,7 +73,8 @@ def validate_text_input(text: str, min_length: int = 1, max_length: int = 5000) 
             field="text"
         )
     
-    if len(text) > max_length:
+    # Optional max length check (for backwards compatibility or specific use cases)
+    if max_length is not None and len(text) > max_length:
         raise ValidationException(
             f"Text must not exceed {max_length} characters",
             field="text"

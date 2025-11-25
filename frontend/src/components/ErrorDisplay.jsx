@@ -42,22 +42,43 @@ const ErrorDisplay = ({ error, onDismiss, type = 'error' }) => {
     return (
         <AnimatePresence>
             <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={`${style.bgColor} ${style.borderColor} border rounded-xl p-4 mb-6 flex items-start gap-3`}
+                initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={`${style.bgColor} ${style.borderColor} border rounded-xl p-4 mb-6 flex items-start gap-3 pop-shadow`}
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
             >
-                <Icon className={`${style.iconColor} flex-shrink-0 mt-0.5`} size={20} />
+                <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                >
+                    <Icon className={`${style.iconColor} flex-shrink-0 mt-0.5`} size={20} />
+                </motion.div>
                 <div className="flex-1">
-                    <p className={`${style.textColor} text-sm`}>{error}</p>
+                    <motion.p 
+                        className={`${style.textColor} text-sm`}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        {error}
+                    </motion.p>
                 </div>
                 {onDismiss && (
-                    <button
+                    <motion.button
                         onClick={onDismiss}
-                        className={`${style.textColor} hover:opacity-70 transition-opacity flex-shrink-0`}
+                        className={`${style.textColor} hover:opacity-70 transition-opacity flex-shrink-0 p-1 rounded focus:outline-none focus:ring-2 focus:ring-current`}
+                        whileHover={{ scale: 1.1, rotate: 90 }}
+                        whileTap={{ scale: 0.9 }}
+                        aria-label={`Dismiss ${type} message`}
+                        title={`Dismiss ${type} message`}
                     >
-                        <X size={18} />
-                    </button>
+                        <X size={18} aria-hidden="true" />
+                    </motion.button>
                 )}
             </motion.div>
         </AnimatePresence>

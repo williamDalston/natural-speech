@@ -35,15 +35,43 @@ const AudioPlayer = ({ audioUrl }) => {
         }
     }, [audioUrl]);
 
-    const togglePlay = () => {
+    const togglePlay = async () => {
         if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.pause();
-            } else {
-                audioRef.current.play();
+            try {
+                if (isPlaying) {
+                    audioRef.current.pause();
+                } else {
+                    await audioRef.current.play();
+                }
+            } catch (error) {
+                console.error('Error toggling playback:', error);
+                // Reset state if play fails
+                setIsPlaying(false);
             }
         }
     };
+
+    // Add keyboard shortcut for spacebar to pause/play
+    useEffect(() => {
+        const handleKeyPress = (e) => {
+            // Only handle spacebar if not typing in an input/textarea
+            if (e.key === ' ' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && audioRef.current) {
+                e.preventDefault();
+                if (isPlaying) {
+                    audioRef.current.pause();
+                } else {
+                    audioRef.current.play().catch(err => {
+                        console.error('Error playing audio:', err);
+                    });
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
+        return () => {
+            window.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [isPlaying, audioUrl]);
 
     const handleSeek = (e) => {
         if (audioRef.current) {
@@ -98,47 +126,49 @@ const AudioPlayer = ({ audioUrl }) => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full bg-gray-900/50 p-4 rounded-xl border border-gray-700"
+            className="w-full bg-gray-900/60 p-3 sm:p-4 rounded-xl border border-gray-700/60 pop-shadow-lg backdrop-blur-sm"
         >
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-blue-400">
-                    <Volume2 size={18} />
-                    <h3 className="text-sm font-medium">Generated Audio</h3>
+            <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-blue-400">
+                    <Volume2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                    <h3 className="text-xs sm:text-sm font-medium">Generated Audio</h3>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                     <motion.button
                         onClick={handleShare}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-200 min-w-[36px] min-h-[36px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center pop-shadow hover:pop-shadow-lg frame-border-hover"
                         title="Share Audio"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         aria-label="Share audio"
                     >
-                        <Share2 size={18} />
+                        <Share2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </motion.button>
                     <a
                         href={audioUrl}
                         download="speech.wav"
-                        className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all duration-200 min-w-[36px] min-h-[36px] sm:min-w-[44px] sm:min-h-[44px] flex items-center justify-center pop-shadow hover:pop-shadow-lg frame-border-hover"
                         title="Download Audio"
                         aria-label="Download audio"
                     >
-                        <Download size={18} />
+                        <Download size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </a>
                 </div>
             </div>
 
             {/* Custom Player Controls */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
                 {/* Progress Bar */}
-                <div
-                    className="relative h-2 bg-gray-700 rounded-full cursor-pointer group"
+                <motion.div
+                    className="relative h-2.5 sm:h-2 bg-gray-700 rounded-full cursor-pointer group touch-none"
                     onClick={handleSeek}
                     role="progressbar"
                     aria-valuemin={0}
                     aria-valuemax={duration}
                     aria-valuenow={currentTime}
                     tabIndex={0}
+                    whileHover={{ scale: 1.05 }}
+                    transition={{ duration: 0.2 }}
                     onKeyDown={(e) => {
                         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                             e.preventDefault();
@@ -153,37 +183,50 @@ const AudioPlayer = ({ audioUrl }) => {
                         className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
                         style={{ width: `${progress}%` }}
                         initial={false}
+                        transition={{ duration: 0.1 }}
                     />
-                    <div
+                    <motion.div
                         className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         style={{ left: `calc(${progress}% - 8px)` }}
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
                     />
-                </div>
+                </motion.div>
 
                 {/* Time and Controls */}
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <motion.button
                             onClick={togglePlay}
-                            className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors"
+                            className="p-2 sm:p-2.5 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors pop-shadow hover:pop-shadow-lg border border-blue-500/30 min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            aria-label={isPlaying ? 'Pause' : 'Play'}
+                            aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
+                            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                         >
                             {isPlaying ? (
-                                <Pause size={20} className="text-blue-400" />
+                                <Pause size={18} className="sm:w-5 sm:h-5 text-blue-400" />
                             ) : (
-                                <Play size={20} className="text-blue-400 fill-current" />
+                                <Play size={18} className="sm:w-5 sm:h-5 text-blue-400 fill-current" />
                             )}
                         </motion.button>
-                        <span className="text-xs text-gray-400 font-mono">
+                        <span className="text-[10px] sm:text-xs text-gray-400 font-mono">
                             {formatTime(currentTime)} / {formatTime(duration)}
                         </span>
                     </div>
 
                     {/* Volume Control */}
-                    <div className="flex items-center gap-2 flex-1 max-w-[120px] ml-4">
-                        <Volume2 size={14} className="text-gray-400" />
+                    <motion.div 
+                        className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-[100px] sm:max-w-[120px] ml-auto sm:ml-4"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <motion.div
+                            animate={isPlaying ? { scale: [1, 1.1, 1] } : {}}
+                            transition={{ duration: 0.5, repeat: Infinity }}
+                        >
+                            <Volume2 size={12} className="sm:w-[14px] sm:h-[14px] text-gray-400" />
+                        </motion.div>
                         <input
                             type="range"
                             min="0"
@@ -197,10 +240,10 @@ const AudioPlayer = ({ audioUrl }) => {
                                     audioRef.current.volume = newVolume;
                                 }
                             }}
-                            className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                            className="flex-1 h-1.5 sm:h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 touch-none"
                             aria-label="Volume"
                         />
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
@@ -209,6 +252,11 @@ const AudioPlayer = ({ audioUrl }) => {
                 ref={audioRef}
                 src={audioUrl}
                 className="hidden"
+                preload="auto"
+                onError={(e) => {
+                    console.error('Audio playback error:', e);
+                    setIsPlaying(false);
+                }}
             />
         </motion.div>
     );

@@ -31,37 +31,58 @@ const Toast = ({ toast, onClose }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-md shadow-lg min-w-[300px] max-w-md ${colors[toast.type]}`}
+      initial={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
+      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+      exit={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl min-w-[300px] max-w-md ${colors[toast.type]} relative overflow-hidden`}
     >
-      <Icon size={20} className="flex-shrink-0 mt-0.5" />
-      <div className="flex-1">
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0"
+        animate={{ x: ['-100%', '100%'] }}
+        transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+      />
+      <motion.div
+        animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+        transition={{ duration: 0.5 }}
+      >
+        <Icon size={20} className="flex-shrink-0 mt-0.5 relative z-10" />
+      </motion.div>
+      <div className="flex-1 relative z-10">
         {toast.title && (
           <h4 className="font-semibold text-sm mb-1">{toast.title}</h4>
         )}
-        <p className="text-sm opacity-90">{toast.message}</p>
+        <p className="text-sm opacity-90 leading-relaxed">{toast.message}</p>
       </div>
-      <button
+      <motion.button
         onClick={onClose}
-        className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity"
+        className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity rounded-lg p-1 hover:bg-white/10 relative z-10"
+        whileHover={{ scale: 1.1, rotate: 90 }}
+        whileTap={{ scale: 0.9 }}
         aria-label="Close notification"
       >
         <X size={16} />
-      </button>
+      </motion.button>
     </motion.div>
   );
 };
 
 const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
-      <AnimatePresence>
-        {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto">
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none max-w-md">
+      <AnimatePresence mode="popLayout">
+        {toasts.map((toast, index) => (
+          <motion.div 
+            key={toast.id} 
+            className="pointer-events-auto"
+            layout
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9, transition: { duration: 0.2 } }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          >
             <Toast toast={toast} onClose={() => removeToast(toast.id)} />
-          </div>
+          </motion.div>
         ))}
       </AnimatePresence>
     </div>

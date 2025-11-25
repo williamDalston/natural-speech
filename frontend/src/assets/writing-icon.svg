@@ -1,0 +1,47 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="iconGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.6" />
+    </linearGradient>
+    <filter id="iconGlow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Paper background -->
+  <rect x="40" y="50" width="120" height="140" rx="4" fill="#1f2937" stroke="#3b82f6" stroke-width="1.5" opacity="0.4"/>
+  <rect x="45" y="55" width="110" height="130" rx="2" fill="#111827" opacity="0.9"/>
+  
+  <!-- Text lines -->
+  <line x1="55" y1="75" x2="145" y2="75" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  <line x1="55" y1="95" x2="140" y2="95" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  <line x1="55" y1="115" x2="145" y2="115" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  <line x1="55" y1="135" x2="135" y2="135" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  <line x1="55" y1="155" x2="145" y2="155" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  <line x1="55" y1="175" x2="140" y2="175" stroke="#60a5fa" stroke-width="2" opacity="0.4" stroke-dasharray="4,2"/>
+  
+  <!-- Pen -->
+  <g transform="translate(150, 70) rotate(45)">
+    <rect x="-8" y="-40" width="16" height="80" rx="8" fill="url(#iconGrad1)" filter="url(#iconGlow)"/>
+    <path d="M -6 -40 L 0 -50 L 6 -40 Z" fill="#1e40af" opacity="0.9"/>
+    <ellipse cx="0" cy="-30" rx="5" ry="12" fill="#93c5fd" opacity="0.6"/>
+  </g>
+  
+  <!-- Ink drop -->
+  <ellipse cx="70" cy="160" rx="8" ry="12" fill="#3b82f6" opacity="0.5"/>
+  <ellipse cx="70" cy="165" rx="5" ry="8" fill="#60a5fa" opacity="0.7"/>
+  
+  <!-- Subtle highlight shapes -->
+  <circle cx="160" cy="40" r="15" fill="#3b82f6" opacity="0.15"/>
+  <circle cx="30" cy="170" r="12" fill="#8b5cf6" opacity="0.12"/>
+</svg>
+

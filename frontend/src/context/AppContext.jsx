@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 // Initial state
 const initialState = {
-    activeTab: 'tts',
+    activeTab: 'library',
     text: '',
     voices: [],
     selectedVoice: '',

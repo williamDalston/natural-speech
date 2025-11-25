@@ -130,18 +130,24 @@ const ImageUpload = ({ image, setImage, onValidationChange }) => {
                 />
             </div>
 
-            <div
+            <motion.div
                 onClick={() => !previewUrl && fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`relative w-full h-48 rounded-xl border-2 border-dashed transition-all duration-200 overflow-hidden group ${
+                className={`relative w-full h-40 sm:h-48 rounded-xl border-2 border-dashed transition-all duration-200 overflow-hidden group ${
                     previewUrl
-                        ? 'border-gray-700 bg-gray-900'
+                        ? 'border-gray-700 bg-gray-900/80 pop-shadow'
                         : isDragging
-                        ? 'border-blue-500 bg-blue-500/10 scale-[1.02]'
-                        : 'border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/30 cursor-pointer'
+                        ? 'border-blue-500 bg-blue-500/10 pop-shadow-lg'
+                        : 'border-gray-700 hover:border-blue-500/50 hover:bg-gray-800/30 cursor-pointer pop-shadow hover:pop-shadow-lg'
                 }`}
+                animate={{
+                    scale: isDragging ? 1.02 : 1,
+                    borderColor: isDragging ? 'rgba(59, 130, 246, 1)' : undefined,
+                }}
+                whileHover={!previewUrl ? { scale: 1.01, borderColor: 'rgba(59, 130, 246, 0.5)' } : {}}
+                transition={{ duration: 0.2 }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -166,13 +172,13 @@ const ImageUpload = ({ image, setImage, onValidationChange }) => {
                                 className="w-full h-full object-contain"
                             />
                             <motion.div
-                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                 whileHover={{ opacity: 1 }}
                             >
                                 <motion.button
                                     onClick={handleClear}
-                                    className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600 transition-colors"
-                                    whileHover={{ scale: 1.1 }}
+                                    className="p-3 bg-gradient-to-br from-red-500/90 to-red-600/90 text-white rounded-full hover:from-red-400 hover:to-red-500 transition-all duration-300 shadow-lg shadow-red-500/30 border border-red-400/30"
+                                    whileHover={{ scale: 1.15, rotate: 90 }}
                                     whileTap={{ scale: 0.9 }}
                                     aria-label="Remove image"
                                 >
@@ -182,26 +188,36 @@ const ImageUpload = ({ image, setImage, onValidationChange }) => {
                         </motion.div>
                     ) : (
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
                             className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 gap-3"
                         >
                             <motion.div
                                 className="p-4 rounded-full bg-gray-800/50 group-hover:bg-gray-800 transition-colors"
-                                whileHover={{ scale: 1.1 }}
+                                whileHover={{ scale: 1.1, rotate: [0, -10, 10, 0] }}
+                                animate={isDragging ? { 
+                                    scale: [1, 1.2, 1],
+                                    rotate: [0, 5, -5, 0]
+                                } : {}}
+                                transition={{ duration: 0.5, repeat: isDragging ? Infinity : 0 }}
                             >
                                 <Upload size={24} />
                             </motion.div>
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-gray-300">
+                            <motion.div 
+                                className="text-center px-2"
+                                animate={isDragging ? { scale: [1, 1.05, 1] } : {}}
+                                transition={{ duration: 0.5, repeat: isDragging ? Infinity : 0 }}
+                            >
+                                <p className="text-xs sm:text-sm font-medium text-gray-300">
                                     {isDragging ? 'Drop image here' : 'Click to upload or drag and drop'}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">JPG, PNG, WebP (max {(MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)}MB)</p>
-                            </div>
+                                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">JPG, PNG, WebP (max {(MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)}MB)</p>
+                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
+            </motion.div>
 
             <input
                 id="image-upload"
@@ -219,7 +235,7 @@ const ImageUpload = ({ image, setImage, onValidationChange }) => {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2"
+                        className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2 pop-shadow"
                         role="alert"
                     >
                         <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={16} />

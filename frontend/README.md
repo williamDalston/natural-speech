@@ -169,13 +169,18 @@ The included `nginx.conf` is optimized for production with:
 frontend/
 ├── src/
 │   ├── components/      # React components
+│   ├── context/         # React context providers
+│   ├── hooks/           # Custom React hooks
+│   ├── test/            # Unit tests
 │   ├── api.js          # API client
 │   ├── App.jsx         # Main application component
 │   └── main.jsx        # Application entry point
+├── e2e/                 # E2E tests (Playwright)
 ├── public/             # Static assets
 ├── dist/               # Production build output
 ├── Dockerfile          # Docker configuration
 ├── nginx.conf          # Nginx configuration
+├── playwright.config.js # Playwright configuration
 ├── vite.config.js      # Vite configuration
 └── package.json        # Dependencies
 ```
@@ -209,15 +214,49 @@ frontend/
 - `npm run test` - Run tests in watch mode
 - `npm run test:ui` - Run tests with UI
 - `npm run test:coverage` - Run tests with coverage report
+- `npm run test:e2e` - Run E2E tests (Playwright)
+- `npm run test:e2e:ui` - Run E2E tests with UI
+
+**Note**: E2E tests require the backend to be running on `http://localhost:8000`
+
+## Deployment
+
+See [DEPLOYMENT_PLATFORMS.md](./DEPLOYMENT_PLATFORMS.md) for detailed platform-specific guides:
+- **Vercel** - Fast, zero-config deployment
+- **Netlify** - Similar to Vercel, great free tier
+- **Railway** - Full-stack deployment with Docker support
+- **Docker** - Self-hosted or cloud deployment
+- **GitHub Pages** - Free static hosting
+- **Self-Hosted** - Full control with Nginx
+
+Quick deployment:
+
+```bash
+# Vercel
+vercel
+
+# Netlify
+netlify deploy --prod --dir=dist
+
+# Railway (connect GitHub repo in dashboard)
+# Docker
+docker build -t natural-speech-frontend .
+docker run -p 3000:80 natural-speech-frontend
+```
 
 ## CI/CD
 
 GitHub Actions workflow is configured at `.github/workflows/frontend.yml`:
 
-- Linting on pull requests
-- Building on push/PR
-- Docker image building on main/develop branches
-- Bundle analysis on pull requests
+- ✅ Linting on pull requests
+- ✅ Format checking
+- ✅ Unit tests with coverage
+- ✅ E2E tests with Playwright
+- ✅ Building on push/PR
+- ✅ Docker image building on main/develop branches
+- ✅ Bundle analysis on pull requests
+
+All quality checks must pass before deployment.
 
 ## Troubleshooting
 

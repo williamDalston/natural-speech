@@ -71,7 +71,7 @@ const fetchWithTimeout = async (url, options = {}, timeout = DEFAULT_TIMEOUT) =>
     }
 };
 
-// Retry wrapper
+// Retry wrapper with rate limit handling
 const withRetry = async (fn, retries = DEFAULT_RETRY_ATTEMPTS, delay = DEFAULT_RETRY_DELAY) => {
     let lastError;
     for (let i = 0; i < retries; i++) {
@@ -79,16 +79,50 @@ const withRetry = async (fn, retries = DEFAULT_RETRY_ATTEMPTS, delay = DEFAULT_R
             return await fn();
         } catch (error) {
             lastError = error;
-            // Don't retry on client errors (4xx) or timeout errors
+            
+            // Handle rate limits (429) - retry with Retry-After header
+            if (error instanceof APIError && error.status === 429) {
+                if (i < retries - 1) {
+                    // Check for Retry-After header
+                    const retryAfter = error.data?.headers?.['retry-after'] || 
+                                     error.data?.headers?.['Retry-After'];
+                    
+                    if (retryAfter) {
+                        // Wait for the specified time
+                        const waitTime = parseInt(retryAfter) * 1000;
+                        await sleep(waitTime);
+                        continue; // Retry
+                    } else {
+                        // No Retry-After header, use exponential backoff with jitter
+                        const baseDelay = delay * Math.pow(2, i);
+                        const jitter = Math.random() * 1000; // Add randomness
+                        const waitTime = Math.min(baseDelay + jitter, 30000); // Max 30s
+                        await sleep(waitTime);
+                        continue; // Retry
+                    }
+                }
+                // Max retries reached for rate limit
+                throw new APIError(
+                    error.message || 'Rate limit exceeded. Please try again later.',
+                    429,
+                    error.data
+                );
+            }
+            
+            // Don't retry on other client errors (4xx except 429) or timeout errors
             if (error instanceof APIError && error.status >= 400 && error.status < 500) {
                 throw error;
             }
             if (error instanceof TimeoutError) {
                 throw error;
             }
-            // Exponential backoff
+            
+            // Exponential backoff with jitter for other errors (5xx, network errors)
             if (i < retries - 1) {
-                await sleep(delay * Math.pow(2, i));
+                const baseDelay = delay * Math.pow(2, i);
+                const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+                const waitTime = Math.min(baseDelay + jitter, 30000); // Max 30s
+                await sleep(waitTime);
             }
         }
     }
@@ -158,7 +192,12 @@ export class APIClient {
 
                 if (!response.ok) {
                     const errorMessage = await parseError(response);
-                    throw new APIError(errorMessage, response.status);
+                    // Include headers for rate limit handling
+                    const headers = {};
+                    response.headers.forEach((value, key) => {
+                        headers[key.toLowerCase()] = value;
+                    });
+                    throw new APIError(errorMessage, response.status, { headers });
                 }
 
                 // Handle progress for blob responses
@@ -238,12 +277,19 @@ export const generateSpeech = async (text, voice, speed, config = {}) => {
             },
             {
                 timeout,
-                retries: 1, // Don't retry TTS as it's usually fast
+                retries: 3, // Retry on rate limits
                 onProgress,
                 requestId,
             }
         );
     } catch (error) {
+        if (error instanceof APIError && error.status === 429) {
+            const retryAfter = error.data?.headers?.['retry-after'];
+            if (retryAfter) {
+                throw new Error(`Rate limit exceeded. Please try again in ${retryAfter} seconds.`);
+            }
+            throw new Error("Rate limit exceeded. Please try again in a moment.");
+        }
         if (error instanceof TimeoutError) {
             throw new Error("Speech generation timed out. Please try again.");
         }
@@ -254,36 +300,87 @@ export const generateSpeech = async (text, voice, speed, config = {}) => {
     }
 };
 
-export const generateAvatar = async (text, voice, speed, imageFile, config = {}) => {
-    const { onProgress, requestId, timeout = DEFAULT_TIMEOUT } = config;
-    const formData = new FormData();
-    formData.append("text", text);
-    formData.append("voice", voice);
-    formData.append("speed", speed);
-    formData.append("image", imageFile);
+// Writings API functions
+export const getWritings = async (skip = 0, limit = 100, search = null) => {
+    try {
+        const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() });
+        if (search) {
+            params.append("search", search);
+        }
+        return await apiClient.request(`${API_BASE_URL}/writings?${params.toString()}`, {
+            method: "GET",
+        });
+    } catch (error) {
+        if (error instanceof NetworkError) {
+            throw new Error("Cannot connect to server. Please ensure the backend is running.");
+        }
+        throw new Error(error.message || "Failed to fetch writings");
+    }
+};
 
+export const getWriting = async (writingId) => {
+    try {
+        return await apiClient.request(`${API_BASE_URL}/writings/${writingId}`, {
+            method: "GET",
+        });
+    } catch (error) {
+        if (error instanceof NetworkError) {
+            throw new Error("Cannot connect to server. Please ensure the backend is running.");
+        }
+        throw new Error(error.message || "Failed to fetch writing");
+    }
+};
+
+export const createWriting = async (writing) => {
     try {
         return await apiClient.request(
-            `${API_BASE_URL}/avatar`,
+            `${API_BASE_URL}/writings`,
             {
                 method: "POST",
-                body: formData,
-            },
-            {
-                timeout,
-                retries: 1, // Don't retry avatar generation (too long)
-                onProgress,
-                requestId,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(writing),
             }
         );
     } catch (error) {
-        if (error instanceof TimeoutError) {
-            throw new Error("Avatar generation timed out. This may take several minutes. Please try again.");
-        }
         if (error instanceof NetworkError) {
-            throw new Error("Network error. Please check your connection.");
+            throw new Error("Cannot connect to server. Please ensure the backend is running.");
         }
-        throw new Error(error.message || "Failed to generate avatar");
+        throw new Error(error.message || "Failed to create writing");
+    }
+};
+
+export const updateWriting = async (writingId, writing) => {
+    try {
+        return await apiClient.request(
+            `${API_BASE_URL}/writings/${writingId}`,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(writing),
+            }
+        );
+    } catch (error) {
+        if (error instanceof NetworkError) {
+            throw new Error("Cannot connect to server. Please ensure the backend is running.");
+        }
+        throw new Error(error.message || "Failed to update writing");
+    }
+};
+
+export const deleteWriting = async (writingId) => {
+    try {
+        return await apiClient.request(`${API_BASE_URL}/writings/${writingId}`, {
+            method: "DELETE",
+        });
+    } catch (error) {
+        if (error instanceof NetworkError) {
+            throw new Error("Cannot connect to server. Please ensure the backend is running.");
+        }
+        throw new Error(error.message || "Failed to delete writing");
     }
 };
 
