@@ -9,7 +9,7 @@ torch
 torchvision
 torchaudio
 slowapi
-python-magic-bin
+python-magic
 sqlalchemy
 psutil
 loguru
