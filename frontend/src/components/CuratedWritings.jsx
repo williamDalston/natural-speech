@@ -49,7 +49,7 @@ const CuratedWritings = ({ onSelectWriting }) => {
 
     const handlePlayAudio = async (writing, e) => {
         if (e) e.stopPropagation();
-        
+
         if (audioUrl && selectedWriting?.id === writing.id) {
             return;
         }
@@ -57,15 +57,15 @@ const CuratedWritings = ({ onSelectWriting }) => {
         try {
             setGeneratingAudio(writing.id);
             setSelectedWriting(writing);
-            
+
             if (audioUrl) URL.revokeObjectURL(audioUrl);
-            
+
             const audioBlob = await generateSpeech(
                 writing.content,
                 'af_bella',
                 1.0
             );
-            
+
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
             success('Audio generated successfully');
@@ -122,11 +122,10 @@ const CuratedWritings = ({ onSelectWriting }) => {
                     <div className="flex flex-wrap gap-2">
                         <motion.button
                             onClick={() => setSelectedGenre(null)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                selectedGenre === null
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedGenre === null
                                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
                                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                            }`}
+                                }`}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             aria-label="Show all genres"
@@ -138,11 +137,10 @@ const CuratedWritings = ({ onSelectWriting }) => {
                             <motion.button
                                 key={genre}
                                 onClick={() => setSelectedGenre(genre)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    selectedGenre === genre
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedGenre === genre
                                         ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
                                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                                }`}
+                                    }`}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 aria-label={`Filter by ${genre}`}
@@ -203,16 +201,16 @@ const CuratedWritings = ({ onSelectWriting }) => {
                 <div className="flex items-center justify-center p-8">
                     <div className="text-center max-w-md">
                         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
-                            <Sparkles className="w-8 h-8 text-gray-600" />
+                            <Sparkles className="w-8 h-8 text-gray-500" />
                         </div>
                         <p className="text-gray-400 text-lg font-medium mb-2">
-                            {selectedGenre 
+                            {selectedGenre
                                 ? `No writings found in "${selectedGenre}" genre`
                                 : 'No curated writings found'
                             }
                         </p>
-                        <p className="text-gray-600 text-sm mb-4">
-                            {selectedGenre 
+                        <p className="text-gray-500 text-sm mb-4">
+                            {selectedGenre
                                 ? 'Try selecting a different genre or view all genres.'
                                 : 'Check back later for new curated content, or browse your own writings.'
                             }

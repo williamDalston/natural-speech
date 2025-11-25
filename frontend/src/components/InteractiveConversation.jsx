@@ -15,18 +15,18 @@ const InteractiveConversation = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [typingMessageId, setTypingMessageId] = useState(null);
-    
+
     // Video and audio states
     const [isVideoEnabled, setIsVideoEnabled] = useState(true);
     const [isMuted, setIsMuted] = useState(false);
     const [currentAudio, setCurrentAudio] = useState(null);
-    
+
     // Refs
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const messagesEndRef = useRef(null);
     const audioRef = useRef(null);
-    
+
     const { success, error: showError } = useToast();
 
     // Initialize video stream
@@ -36,7 +36,7 @@ const InteractiveConversation = () => {
         } else {
             stopVideo();
         }
-        
+
         return () => {
             stopVideo();
         };
@@ -113,7 +113,7 @@ const InteractiveConversation = () => {
             }
 
             const data = await response.json();
-            
+
             // Add AI's opening message with typing animation
             const aiMessage = {
                 id: Date.now(),
@@ -123,12 +123,12 @@ const InteractiveConversation = () => {
                 timestamp: new Date().toISOString(),
                 isTyping: true
             };
-            
+
             setMessages([aiMessage]);
             setTypingMessageId(aiMessage.id);
             setIsConversationActive(true);
             success('Conversation started!');
-            
+
             // Play audio after typing completes
             if (data.audio_url && !isMuted) {
                 // Delay audio to sync with typing animation
@@ -136,7 +136,7 @@ const InteractiveConversation = () => {
                     playAudio(data.audio_url);
                 }, Math.min(data.message.length * 30, 3000));
             }
-            
+
         } catch (err) {
             const errorMsg = err.message || 'Failed to start conversation';
             setError(errorMsg);
@@ -189,7 +189,7 @@ const InteractiveConversation = () => {
             }
 
             const data = await response.json();
-            
+
             // Add AI's response with typing animation
             const aiMessage = {
                 id: Date.now() + 1,
@@ -199,10 +199,10 @@ const InteractiveConversation = () => {
                 timestamp: new Date().toISOString(),
                 isTyping: true
             };
-            
+
             setMessages(prev => [...prev, aiMessage]);
             setTypingMessageId(aiMessage.id);
-            
+
             // Play audio after typing completes
             if (data.audio_url && !isMuted) {
                 // Delay audio to sync with typing animation
@@ -210,7 +210,7 @@ const InteractiveConversation = () => {
                     playAudio(data.audio_url);
                 }, Math.min(data.message.length * 30, 3000));
             }
-            
+
         } catch (err) {
             const errorMsg = err.message || 'Failed to send message';
             showError(errorMsg);
@@ -223,26 +223,26 @@ const InteractiveConversation = () => {
 
     const playAudio = (audioUrl) => {
         if (!audioUrl) return;
-        
+
         // Stop current audio if playing
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current = null;
         }
-        
+
         // Create new audio element
         const audio = new Audio(audioUrl);
         audioRef.current = audio;
-        
+
         audio.onended = () => {
             audioRef.current = null;
         };
-        
+
         audio.onerror = (err) => {
             logger.error('Error playing audio', err);
             audioRef.current = null;
         };
-        
+
         audio.play().catch(err => {
             logger.error('Error playing audio', err);
             audioRef.current = null;
@@ -371,11 +371,10 @@ const InteractiveConversation = () => {
                                     <div className="flex gap-2">
                                         <motion.button
                                             onClick={() => setIsVideoEnabled(!isVideoEnabled)}
-                                            className={`p-2 rounded-lg transition-colors ${
-                                                isVideoEnabled
+                                            className={`p-2 rounded-lg transition-colors ${isVideoEnabled
                                                     ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
                                                     : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                                            }`}
+                                                }`}
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
                                         >
@@ -388,11 +387,10 @@ const InteractiveConversation = () => {
                                                     audioRef.current.pause();
                                                 }
                                             }}
-                                            className={`p-2 rounded-lg transition-colors ${
-                                                isMuted
+                                            className={`p-2 rounded-lg transition-colors ${isMuted
                                                     ? 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                                     : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                                            }`}
+                                                }`}
                                             whileHover={{ scale: 1.1 }}
                                             whileTap={{ scale: 0.9 }}
                                         >
@@ -411,7 +409,7 @@ const InteractiveConversation = () => {
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                                            <VideoOff size={48} className="text-gray-600" />
+                                            <VideoOff size={48} className="text-gray-500" />
                                         </div>
                                     )}
                                 </div>
@@ -456,11 +454,10 @@ const InteractiveConversation = () => {
                                             <motion.div
                                                 layout
                                                 initial={false}
-                                                className={`max-w-[80%] min-w-[120px] rounded-xl p-4 ${
-                                                    message.role === 'user'
+                                                className={`max-w-[80%] min-w-[120px] rounded-xl p-4 ${message.role === 'user'
                                                         ? 'bg-blue-600/20 text-blue-100 border border-blue-500/30'
                                                         : 'bg-gray-800/50 text-gray-100 border border-gray-700/50'
-                                                }`}
+                                                    }`}
                                             >
                                                 {message.role === 'assistant' && message.isTyping && typingMessageId === message.id ? (
                                                     <p className="text-sm leading-relaxed whitespace-pre-wrap text-container">
@@ -469,8 +466,8 @@ const InteractiveConversation = () => {
                                                             speed={30}
                                                             className="message-bubble"
                                                             onComplete={() => {
-                                                                setMessages(prev => prev.map(msg => 
-                                                                    msg.id === message.id 
+                                                                setMessages(prev => prev.map(msg =>
+                                                                    msg.id === message.id
                                                                         ? { ...msg, isTyping: false }
                                                                         : msg
                                                                 ));

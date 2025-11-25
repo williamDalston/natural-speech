@@ -33,7 +33,7 @@ const DataViewer = ({ data, loading, error, onRefresh, onExport }) => {
     if (!data) {
         return (
             <div className="glass-card p-8 flex flex-col items-center justify-center min-h-[400px] text-center">
-                <Globe className="text-gray-600 mb-4" size={48} />
+                <Globe className="text-gray-500 mb-4" size={48} />
                 <p className="text-gray-400 mb-2">No data selected</p>
                 <p className="text-sm text-gray-500">Use the data selector to fetch data</p>
             </div>
@@ -163,7 +163,7 @@ const DataViewer = ({ data, loading, error, onRefresh, onExport }) => {
             {/* Empty State */}
             {records.length === 0 && (
                 <div className="glass-card p-8 flex flex-col items-center justify-center min-h-[300px] text-center">
-                    <Globe className="text-gray-600 mb-4" size={48} />
+                    <Globe className="text-gray-500 mb-4" size={48} />
                     <p className="text-gray-400 mb-2">No data found</p>
                     <p className="text-sm text-gray-500">
                         Try adjusting your date range or filters

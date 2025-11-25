@@ -5,7 +5,6 @@ import { useState } from 'react';
 import BackgroundDecorations from './BackgroundDecorations';
 import { useSidebarNavigation } from '../hooks/useSidebarNavigation';
 import { useNavigationShortcuts } from '../hooks/useNavigationShortcuts';
-import { useSidebarNavigation } from '../hooks/useSidebarNavigation';
 import KeyboardShortcuts from './KeyboardShortcuts';
 import SkipLink from './SkipLink';
 
@@ -84,13 +83,13 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                 className={`fixed top-0 left-0 h-full bg-gray-900/98 backdrop-blur-xl border-r border-gray-800 w-64 sm:w-72 z-50 md:translate-x-0`}
             >
-                <motion.div 
+                <motion.div
                     className="p-6 flex items-center justify-between"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                 >
-                    <motion.h1 
+                    <motion.h1
                         className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -98,8 +97,8 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                     >
                         Prose & Pause
                     </motion.h1>
-                    <motion.button 
-                        onClick={() => setIsOpen(false)} 
+                    <motion.button
+                        onClick={() => setIsOpen(false)}
                         className="md:hidden text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
                         aria-label="Close sidebar"
                         whileHover={{ scale: 1.1, rotate: 90 }}
@@ -113,7 +112,7 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                     {menuItems.map((item, index) => {
                         const isActive = activeTab === item.id;
                         const isPrimary = item.priority === 'primary';
-                        
+
                         return (
                             <motion.button
                                 key={item.id}
@@ -121,13 +120,12 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                                     setActiveTab(item.id);
                                     setIsOpen(false);
                                 }}
-                                className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base relative ${
-                                    isActive
-                                        ? 'bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-blue-300 border-l-4 border-blue-500 shadow-lg shadow-blue-500/20'
-                                        : isPrimary
+                                className={`w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base relative ${isActive
+                                    ? 'bg-gradient-to-r from-blue-600/30 to-purple-600/30 text-blue-300 border-l-4 border-blue-500 shadow-lg shadow-blue-500/20'
+                                    : isPrimary
                                         ? 'text-gray-300 hover:bg-gray-800/50 hover:text-white border-l-4 border-transparent'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
-                                }`}
+                                    }`}
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.05, duration: 0.3 }}
@@ -159,7 +157,7 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                 {/* Horizontal Divider */}
                 <div className="mx-4 my-6 h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
 
-                <motion.div 
+                <motion.div
                     className="absolute bottom-0 left-0 w-full p-6 space-y-4"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -167,21 +165,21 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                 >
                     {/* Horizontal Divider */}
                     <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
-                    
-                    <motion.div 
+
+                    <motion.div
                         className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 pop-shadow-lg"
                         whileHover={{ scale: 1.02, borderColor: 'rgba(59, 130, 246, 0.5)' }}
                         transition={{ duration: 0.2 }}
                     >
                         <p className="text-xs text-gray-500 mb-2">System Status</p>
                         <div className="flex items-center gap-2">
-                            <motion.div 
+                            <motion.div
                                 className="w-2 h-2 rounded-full bg-green-500"
-                                animate={{ 
+                                animate={{
                                     scale: [1, 1.2, 1],
                                     opacity: [1, 0.7, 1]
                                 }}
-                                transition={{ 
+                                transition={{
                                     duration: 2,
                                     repeat: Infinity,
                                     ease: "easeInOut"
@@ -190,9 +188,9 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
                             <span className="text-sm text-gray-300">Online</span>
                         </div>
                     </motion.div>
-                    
+
                     {/* Author Credit */}
-                    <motion.div 
+                    <motion.div
                         className="text-center"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -211,10 +209,10 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
 
 const Layout = ({ children, activeTab, setActiveTab, shortcutsModalRef }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
+
     // Enable number key navigation for sidebar (1-9)
     useSidebarNavigation(setActiveTab, true);
-    
+
     // Navigation items for breadcrumb and shortcuts (same order as Sidebar)
     const menuItems = [
         { id: 'editor', label: 'Create Writing' },
@@ -236,7 +234,7 @@ const Layout = ({ children, activeTab, setActiveTab, shortcutsModalRef }) => {
     });
 
     return (
-            <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 relative" role="application" aria-label="Prose & Pause Application">
+        <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 relative" role="application" aria-label="Prose & Pause Application">
             <BackgroundDecorations />
             <Sidebar
                 isOpen={isSidebarOpen}
@@ -247,7 +245,7 @@ const Layout = ({ children, activeTab, setActiveTab, shortcutsModalRef }) => {
 
             <div className="md:ml-64 min-h-screen flex flex-col relative z-10 overflow-x-hidden">
                 {/* Header */}
-                <motion.header 
+                <motion.header
                     className="h-14 sm:h-16 border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-4 flex items-center justify-between shadow-lg shadow-black/20"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -265,7 +263,7 @@ const Layout = ({ children, activeTab, setActiveTab, shortcutsModalRef }) => {
                     </motion.button>
 
                     {/* Breadcrumb Navigation */}
-                    <motion.nav 
+                    <motion.nav
                         className="hidden md:flex items-center gap-2 text-sm text-gray-400 flex-1"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -273,20 +271,20 @@ const Layout = ({ children, activeTab, setActiveTab, shortcutsModalRef }) => {
                         aria-label="Breadcrumb"
                     >
                         <span className="text-gray-500">Prose & Pause</span>
-                        <span className="text-gray-600">/</span>
+                        <span className="text-gray-500">/</span>
                         <span className="text-gray-300">
                             {menuItems.find(item => item.id === activeTab)?.label || 'Home'}
                         </span>
                     </motion.nav>
 
-                    <motion.div 
+                    <motion.div
                         className="flex items-center gap-4"
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.2, duration: 0.3 }}
                     >
                         {/* System Status Indicator */}
-                        <motion.div 
+                        <motion.div
                             className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800/50 border border-gray-700/50"
                             whileHover={{ scale: 1.05 }}
                         >

@@ -6,6 +6,7 @@ import { useToast } from '../hooks/useToast';
 import { useDebounce } from '../hooks/useDebounce';
 import { useMobile } from '../hooks/useMobile';
 import { usePullToRefresh } from '../hooks/useTouchGestures';
+import { useGlobalKeyboardShortcuts } from '../hooks/useGlobalKeyboardShortcuts';
 import { formatDate } from '../utils/dateFormatter';
 import { highlightText } from '../utils/searchUtils';
 import { useApp } from '../context/AppContext';
@@ -107,10 +108,10 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
         const handleKeyDown = (e) => {
             // Only handle if not typing in input/textarea
             const target = e.target;
-            const isInput = target.tagName === 'INPUT' || 
-                           target.tagName === 'TEXTAREA' || 
-                           target.isContentEditable;
-            
+            const isInput = target.tagName === 'INPUT' ||
+                target.tagName === 'TEXTAREA' ||
+                target.isContentEditable;
+
             if (isInput) return;
 
             // Ctrl/Cmd + Arrow keys for navigation
@@ -150,8 +151,8 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
         try {
             setLoading(true);
             const response = await getWritings(
-                0, 
-                100, 
+                0,
+                100,
                 debouncedSearch || null,
                 debouncedFilters.category || null,
                 debouncedFilters.genre || null,
@@ -207,13 +208,13 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
         try {
             setGeneratingAudio(writing.id);
             setSelectedWriting(writing);
-            
+
             const audioBlob = await generateSpeech(
                 writing.content,
                 'af_bella', // Default voice, can be made configurable
                 1.0 // Default speed
             );
-            
+
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
             success('Audio generated successfully');
@@ -277,13 +278,13 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
         try {
             setGeneratingAudio(writing.id);
             setSelectedWriting(writing);
-            
+
             const audioBlob = await generateSpeech(
                 writing.content,
                 'af_bella',
                 1.0
             );
-            
+
             if (audioUrl) URL.revokeObjectURL(audioUrl);
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
@@ -428,20 +429,20 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800/50 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                         </div>
                         <p className="text-gray-400 text-lg font-medium mb-2">No writings found</p>
-                        <p className="text-gray-600 text-sm mb-4">
+                        <p className="text-gray-500 text-sm mb-4">
                             {debouncedSearch ? (
                                 <>
-                                    No results for "<span className="text-gray-400">{debouncedSearch}</span>". 
+                                    No results for "<span className="text-gray-400">{debouncedSearch}</span>".
                                     <br />Try a different search term or clear your search.
                                 </>
                             ) : (
                                 <>
-                                    Your writing library is empty. 
+                                    Your writing library is empty.
                                     <br />Create your first writing to get started!
                                 </>
                             )}
@@ -548,8 +549,8 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
                                     <div className="pr-20">
                                         <h3 className="text-lg font-semibold text-white mb-2 line-clamp-2">
                                             {debouncedSearch ? (
-                                                <span dangerouslySetInnerHTML={{ 
-                                                    __html: highlightText(writing.title || 'Untitled', debouncedSearch) 
+                                                <span dangerouslySetInnerHTML={{
+                                                    __html: highlightText(writing.title || 'Untitled', debouncedSearch)
                                                 }} />
                                             ) : (
                                                 writing.title || 'Untitled'
@@ -558,8 +559,8 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
                                         {writing.author && (
                                             <p className="text-sm text-blue-400 mb-2">
                                                 by {debouncedSearch ? (
-                                                    <span dangerouslySetInnerHTML={{ 
-                                                        __html: highlightText(writing.author, debouncedSearch) 
+                                                    <span dangerouslySetInnerHTML={{
+                                                        __html: highlightText(writing.author, debouncedSearch)
                                                     }} />
                                                 ) : (
                                                     writing.author
@@ -568,8 +569,8 @@ const TextLibrary = ({ onSelectWriting, onEditWriting }) => {
                                         )}
                                         <p className="text-gray-400 text-sm mb-4 line-clamp-3">
                                             {debouncedSearch ? (
-                                                <span dangerouslySetInnerHTML={{ 
-                                                    __html: highlightText(truncateText(writing.content), debouncedSearch) 
+                                                <span dangerouslySetInnerHTML={{
+                                                    __html: highlightText(truncateText(writing.content), debouncedSearch)
                                                 }} />
                                             ) : (
                                                 truncateText(writing.content)

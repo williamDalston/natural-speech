@@ -35,7 +35,6 @@ function App() {
     const shortcutsRef = useRef(null);
     const saveHandlerRef = useRef(null);
     const editorRef = useRef(null);
-    const shortcutsRef = useRef(null);
     const [writings, setWritings] = useState([]);
 
     // Load writings for quick search
@@ -95,18 +94,6 @@ function App() {
                 shortcutsRef.current.open();
             }
         },
-        onNavigateSidebar: (number) => {
-            const menuItems = [
-                'editor', 'library', 'curated', 'progress', 'speech',
-                'practice', 'interactive', 'rhetorical', 'poems'
-            ];
-            if (number >= 1 && number <= menuItems.length) {
-                setActiveTab(menuItems[number - 1]);
-            }
-        },
-        activeTab: state.activeTab,
-        setActiveTab: setActiveTab,
-        canSave: state.activeTab === 'editor' && !!saveHandlerRef.current,
         onNavigateSidebar: handleNavigateSidebar,
         activeTab: state.activeTab,
         setActiveTab,
