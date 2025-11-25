@@ -59,5 +59,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python healthcheck.py || exit 1
 
 # Run with Gunicorn in production
-CMD ["gunicorn", "main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000", "--timeout", "300"]
+# Use 1 worker by default for free tier hosting (512MB RAM limit)
+# Can be overridden with WORKERS environment variable
+# Note: Each worker loads models into memory, so 1 worker is recommended for free tier
+CMD ["sh", "-c", "exec gunicorn main:app --workers ${WORKERS:-1} --worker-class uvicorn.workers.UvicornWorker --bind ${HOST:-0.0.0.0}:${PORT:-8000} --timeout 300 --access-logfile - --error-logfile - --log-level ${LOG_LEVEL:-info}"]
 

@@ -73,8 +73,8 @@ class Config:
         # Monitoring
         self.ENABLE_METRICS: bool = os.getenv("ENABLE_METRICS", "True").lower() == "true"
         
-        # Workers (for Gunicorn)
-        self.WORKERS: int = int(os.getenv("WORKERS", "4"))
+        # Workers (for Gunicorn) - default to 1 for free tier hosting
+        self.WORKERS: int = int(os.getenv("WORKERS", "1"))
         
         # Rate Limiting
         self.RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "True").lower() == "true"
