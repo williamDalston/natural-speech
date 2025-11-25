@@ -5,6 +5,7 @@ import DataViewer from '../components/DataViewer';
 import { useDataFetch } from '../hooks/useDataFetch';
 import { fetchData, exportDataToCSV, getAccounts, getPlatforms } from '../api/dataApi';
 import { useToast } from '../hooks/useToast';
+import logger from '../utils/logger';
 /**
  * Data Page - Example implementation of Data Selector
  * 
@@ -30,7 +31,7 @@ function DataPage() {
                 setAccounts(accs);
                 setPlatforms(plats);
             } catch (err) {
-                console.error('Failed to load accounts/platforms:', err);
+                logger.error('Failed to load accounts/platforms', err);
                 showError('Failed to load accounts and platforms');
             }
         };
@@ -44,7 +45,7 @@ function DataPage() {
             await fetchData(requestParams);
             success('Data loaded successfully!');
         } catch (err) {
-            console.error('Data request failed:', err);
+            logger.error('Data request failed', err);
             showError(err.message || 'Failed to load data');
         }
     };
@@ -67,7 +68,7 @@ function DataPage() {
             URL.revokeObjectURL(url);
             success('Data exported successfully!');
         } catch (err) {
-            console.error('Export failed:', err);
+            logger.error('Export failed', err);
             showError(err.message || 'Failed to export data');
         }
     };

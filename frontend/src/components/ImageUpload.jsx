@@ -170,6 +170,8 @@ const ImageUpload = ({ image, setImage, onValidationChange }) => {
                                 src={previewUrl}
                                 alt="Avatar Preview"
                                 className="w-full h-full object-contain"
+                                loading="lazy"
+                                decoding="async"
                             />
                             <motion.div
                                 className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"

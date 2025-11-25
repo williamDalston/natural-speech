@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Download, Volume2, Share2, Play, Pause } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logger from '../utils/logger';
 
 const AudioPlayer = ({ audioUrl }) => {
     const audioRef = useRef(null);
@@ -44,7 +45,7 @@ const AudioPlayer = ({ audioUrl }) => {
                     await audioRef.current.play();
                 }
             } catch (error) {
-                console.error('Error toggling playback:', error);
+                logger.error('Error toggling playback', error);
                 // Reset state if play fails
                 setIsPlaying(false);
             }
@@ -61,7 +62,7 @@ const AudioPlayer = ({ audioUrl }) => {
                     audioRef.current.pause();
                 } else {
                     audioRef.current.play().catch(err => {
-                        console.error('Error playing audio:', err);
+                        logger.error('Error playing audio', err);
                     });
                 }
             }
@@ -103,7 +104,7 @@ const AudioPlayer = ({ audioUrl }) => {
                         await navigator.clipboard.writeText(audioUrl);
                         // Could trigger a toast here if we had access to it
                     } catch (clipboardErr) {
-                        console.error('Failed to copy to clipboard:', clipboardErr);
+                        logger.error('Failed to copy to clipboard', clipboardErr);
                     }
                 }
             }
@@ -113,7 +114,7 @@ const AudioPlayer = ({ audioUrl }) => {
                 await navigator.clipboard.writeText(audioUrl);
                 // Could trigger a toast here if we had access to it
             } catch (err) {
-                console.error('Failed to copy to clipboard:', err);
+                logger.error('Failed to copy to clipboard', err);
             }
         }
     };
@@ -254,7 +255,7 @@ const AudioPlayer = ({ audioUrl }) => {
                 className="hidden"
                 preload="auto"
                 onError={(e) => {
-                    console.error('Audio playback error:', e);
+                    logger.error('Audio playback error', e);
                     setIsPlaying(false);
                 }}
             />

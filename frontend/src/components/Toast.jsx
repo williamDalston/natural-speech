@@ -29,14 +29,31 @@ const Toast = ({ toast, onClose }) => {
     warning: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
   };
 
+  // ARIA live region announcement for screen readers
+  const announcement = toast.title 
+    ? `${toast.title}. ${toast.message}` 
+    : toast.message;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
-      animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
-      exit={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl min-w-[300px] max-w-md ${colors[toast.type]} relative overflow-hidden`}
-    >
+    <>
+      {/* ARIA Live Region for Screen Reader Announcements */}
+      <div
+        role="status"
+        aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+      <motion.div
+        initial={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
+        animate={{ opacity: 1, y: 0, scale: 1, x: 0 }}
+        exit={{ opacity: 0, y: -20, scale: 0.9, x: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className={`flex items-start gap-3 p-4 rounded-xl border backdrop-blur-xl shadow-2xl min-w-[300px] max-w-md ${colors[toast.type]} relative overflow-hidden`}
+        role="alert"
+        aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+      >
       <motion.div
         className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0"
         animate={{ x: ['-100%', '100%'] }}
@@ -61,9 +78,10 @@ const Toast = ({ toast, onClose }) => {
         whileTap={{ scale: 0.9 }}
         aria-label="Close notification"
       >
-        <X size={16} />
+        <X size={16} aria-hidden="true" />
       </motion.button>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

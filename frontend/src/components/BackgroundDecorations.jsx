@@ -9,6 +9,9 @@ const BackgroundDecorations = () => {
                 alt="" 
                 className="w-full h-full object-cover opacity-[0.35]"
                 aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                fetchpriority="low"
             />
             {/* Additional overlay for subtle effect with gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900/8 via-transparent to-purple-900/8" />

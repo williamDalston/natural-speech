@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
  * 
  * Install Playwright: npx playwright install
  * Run tests: npx playwright test
+ * Run with UI: npx playwright test --ui
+ * Run specific browser: npx playwright test --project=chromium
  */
 export default defineConfig({
   testDir: './e2e',
@@ -14,29 +16,44 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI 
     ? [['html'], ['github'], ['json', { outputFile: 'test-results/results.json' }]]
-    : [['html']],
+    : [['html'], ['list']],
   outputDir: 'test-results',
   
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
 
+  // Configure projects for different browsers
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Only run Firefox and WebKit in CI if explicitly requested
-    ...(process.env.CI ? [] : [
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+    // Mobile browsers
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 12'] },
+    },
+    // Only run mobile and additional browsers in CI if explicitly requested
+    ...(process.env.CI && !process.env.RUN_ALL_BROWSERS ? [] : [
       {
-        name: 'firefox',
-        use: { ...devices['Desktop Firefox'] },
-      },
-      {
-        name: 'webkit',
-        use: { ...devices['Desktop Safari'] },
+        name: 'Microsoft Edge',
+        use: { ...devices['Desktop Edge'] },
       },
     ]),
   ],
@@ -48,4 +65,3 @@ export default defineConfig({
     timeout: 120 * 1000,
   },
 });
-

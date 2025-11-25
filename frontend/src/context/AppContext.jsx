@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import logger from '../utils/logger';
 
 // Initial state
 const initialState = {
@@ -112,7 +113,7 @@ export const AppProvider = ({ children }) => {
                 }
             }
         } catch (error) {
-            console.error('Failed to load persisted state:', error);
+            logger.error('Failed to load persisted state', error);
         }
     }, []);
 
@@ -126,7 +127,7 @@ export const AppProvider = ({ children }) => {
             };
             localStorage.setItem('natural-speech-state', JSON.stringify(toPersist));
         } catch (error) {
-            console.error('Failed to persist state:', error);
+            logger.error('Failed to persist state', error);
         }
     }, [state.selectedVoice, state.speed, state.activeTab]);
 

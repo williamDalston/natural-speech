@@ -34,9 +34,17 @@ from tts_service import TTSService
 from cache_manager import CacheManager
 from performance_monitor import PerformanceMonitor
 from rate_limiter import RateLimiter
+from job_tracker import JobTracker, JobStatus
+from cleanup_scheduler import CleanupScheduler
 from data_service import data_service
 from writings_service import writings_service
 from conversation_service import conversation_service
+from interactive_conversation_service import interactive_conversation_service
+from rhetorical_device_service import rhetorical_device_service
+from speech_service import speech_service
+from speeches_service import speeches_service
+from poems_service import poems_service
+from statistics_service import statistics_service
 from database import get_db, init_db, get_db_health, get_pipeline_stats
 from pipeline_health import (
     pipeline_health,
@@ -52,7 +60,15 @@ from exceptions import (
 from models import (
     ErrorResponse, HealthResponse, StatusResponse, VoicesResponse, TTSRequest,
     WritingCreate, WritingUpdate, WritingResponse, WritingsListResponse,
-    ConversationPromptRequest, ConversationPromptsResponse, ConversationPrompt
+    ConversationPromptRequest, ConversationPromptsResponse, ConversationPrompt,
+    InteractiveConversationStartRequest, InteractiveConversationContinueRequest,
+    InteractiveConversationResponse, ConversationMessage,
+    RhetoricalDevicePracticeRequest, RhetoricalDevicePracticeResponse, RhetoricalDevicePrompt,
+    SpeechCreate, SpeechResponse, SpeechesListResponse,
+    PoemCreate, PoemUpdate, PoemResponse, PoemsListResponse, PoetryStylesResponse,
+    DailyStatisticsResponse, WeeklyStatisticsResponse, MonthlyStatisticsResponse,
+    UserGoalCreate, UserGoalUpdate, UserGoalResponse, UserGoalsListResponse,
+    StreakResponse, StatisticsSummaryResponse
 )
 from logger_config import logger
 
@@ -164,6 +180,32 @@ except Exception as e:
     logger.error(f"Failed to initialize Rate Limiter: {e}", exc_info=True)
     rate_limiter = None
     pipeline_health.record_component_check("rate_limiter", ComponentStatus.ERROR, error=str(e))
+
+# Initialize Job Tracker
+try:
+    job_tracker = JobTracker(db_path=os.getenv("JOB_TRACKER_DB", "jobs.db"))
+    pipeline_health.record_component_check("job_tracker", ComponentStatus.HEALTHY)
+except Exception as e:
+    logger.error(f"Failed to initialize Job Tracker: {e}", exc_info=True)
+    job_tracker = None
+    pipeline_health.record_component_check("job_tracker", ComponentStatus.ERROR, error=str(e))
+
+# Initialize Cleanup Scheduler
+cleanup_scheduler = None
+try:
+    if job_tracker and cache_manager:
+        cleanup_scheduler = CleanupScheduler(
+            job_tracker=job_tracker,
+            cache_manager=cache_manager,
+            rate_limiter=rate_limiter,
+            temp_dir=settings.TEMP_DIR,
+            cleanup_interval=int(os.getenv("CLEANUP_INTERVAL", "3600"))  # 1 hour default
+        )
+        pipeline_health.record_component_check("cleanup_scheduler", ComponentStatus.HEALTHY)
+except Exception as e:
+    logger.error(f"Failed to initialize Cleanup Scheduler: {e}", exc_info=True)
+    cleanup_scheduler = None
+    pipeline_health.record_component_check("cleanup_scheduler", ComponentStatus.ERROR, error=str(e))
 
 # Initialize database health tracking
 try:
@@ -347,7 +389,10 @@ async def root():
             "pipeline_status": "/api/pipeline/status",
             "pipeline_diagnostics": "/api/pipeline/diagnostics",
             "pipeline_stats": "/api/pipeline/stats",
-            "pipeline_errors": "/api/pipeline/errors"
+            "pipeline_errors": "/api/pipeline/errors",
+            "speeches": "/api/speeches",
+            "poems": "/api/poems",
+            "poetry_styles": "/api/poetry/styles"
         },
         "services": {
             "tts": tts_service is not None
@@ -396,6 +441,10 @@ async def get_status():
                 services["cache"] = health["status"]
             elif component == "rate_limiter":
                 services["rate_limiter"] = health["status"]
+            elif component == "job_tracker":
+                services["job_tracker"] = health["status"]
+            elif component == "cleanup_scheduler":
+                services["cleanup_scheduler"] = health["status"]
         
         # Determine overall status
         pipeline_status = pipeline_health.get_pipeline_status()
@@ -666,6 +715,69 @@ async def get_cache_stats():
         "ttl_seconds": cache_manager.ttl
     }
 
+# Job tracking endpoints
+@app.get(
+    "/api/jobs/{job_id}",
+    tags=["Jobs"],
+    summary="Get Job Status",
+    description="Get the status and progress of an async job."
+)
+async def get_job_status(job_id: str):
+    """Get job status by ID."""
+    if not job_tracker:
+        raise HTTPException(status_code=503, detail="Job tracker not available")
+    
+    job = job_tracker.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return job
+
+@app.get(
+    "/api/jobs",
+    tags=["Jobs"],
+    summary="List Jobs",
+    description="Get a list of jobs, optionally filtered by status."
+)
+async def list_jobs(
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    """List jobs with optional status filter."""
+    if not job_tracker:
+        raise HTTPException(status_code=503, detail="Job tracker not available")
+    
+    try:
+        job_status = JobStatus(status) if status else None
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+    
+    jobs = job_tracker.get_jobs(status=job_status, limit=limit)
+    return {
+        "jobs": jobs,
+        "count": len(jobs)
+    }
+
+@app.post(
+    "/api/jobs/cleanup",
+    tags=["Jobs"],
+    summary="Cleanup Old Jobs",
+    description="Manually trigger cleanup of old jobs (admin endpoint)."
+)
+async def cleanup_jobs(days: int = 7):
+    """Cleanup jobs older than specified days."""
+    if not job_tracker:
+        raise HTTPException(status_code=503, detail="Job tracker not available")
+    
+    if days < 1 or days > 365:
+        raise HTTPException(status_code=400, detail="Days must be between 1 and 365")
+    
+    deleted = job_tracker.cleanup_old_jobs(days=days)
+    return {
+        "message": f"Cleaned up {deleted} old jobs",
+        "deleted_count": deleted
+    }
+
 # Data endpoints
 @app.get("/api/accounts", tags=["Data"])
 async def get_accounts():
@@ -749,16 +861,62 @@ async def export_data(request: Request, data_request: DataRequest):
     response_model=WritingsListResponse,
     tags=["Writings"],
     summary="Get All Writings",
-    description="Retrieve all wonderful writings, ordered by most recent first."
+    description="Retrieve all wonderful writings, ordered by most recent first. Supports advanced search with filters for category, genre, author, date range, and word count."
 )
-async def get_writings(skip: int = 0, limit: int = 100, search: Optional[str] = None):
-    """Get all writings with optional search."""
+async def get_writings(
+    skip: int = 0, 
+    limit: int = 100, 
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    genre: Optional[str] = None,
+    author: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_word_count: Optional[int] = None,
+    max_word_count: Optional[int] = None
+):
+    """
+    Get all writings with advanced search and filtering options.
+    
+    - **search**: Text search in title, content, or author
+    - **category**: Filter by category (e.g., "user", "curated")
+    - **genre**: Filter by genre
+    - **author**: Filter by author name
+    - **start_date**: Filter by start date (YYYY-MM-DD format)
+    - **end_date**: Filter by end date (YYYY-MM-DD format)
+    - **min_word_count**: Minimum word count filter
+    - **max_word_count**: Maximum word count filter
+    """
     db = next(get_db())
     try:
-        if search:
-            writings = writings_service.search_writings(db, search, skip, limit)
-        else:
-            writings = writings_service.get_all_writings(db, skip, limit)
+        # Parse date strings if provided
+        start_date_obj = None
+        end_date_obj = None
+        if start_date:
+            try:
+                start_date_obj = datetime.fromisoformat(start_date).date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD.")
+        if end_date:
+            try:
+                end_date_obj = datetime.fromisoformat(end_date).date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD.")
+        
+        # Use unified search method that handles all filters
+        writings = writings_service.search_writings(
+            db=db,
+            query=search,
+            skip=skip,
+            limit=limit,
+            author=author,
+            genre=genre,
+            category=category,
+            start_date=start_date_obj,
+            end_date=end_date_obj,
+            min_word_count=min_word_count,
+            max_word_count=max_word_count
+        )
         
         # Convert to response format
         writing_responses = [
@@ -767,6 +925,8 @@ async def get_writings(skip: int = 0, limit: int = 100, search: Optional[str] = 
                 title=w.title,
                 content=w.content,
                 author=w.author,
+                category=getattr(w, 'category', 'user'),
+                genre=getattr(w, 'genre', None),
                 created_at=w.created_at.isoformat() + "Z",
                 updated_at=w.updated_at.isoformat() + "Z"
             )
@@ -798,6 +958,8 @@ async def get_writing(writing_id: int):
             title=writing.title,
             content=writing.content,
             author=writing.author,
+            category=getattr(writing, 'category', 'user'),
+            genre=getattr(writing, 'genre', None),
             created_at=writing.created_at.isoformat() + "Z",
             updated_at=writing.updated_at.isoformat() + "Z"
         )
@@ -824,11 +986,20 @@ async def create_writing(request: Request, writing: WritingCreate):
             author=writing.author
         )
         
+        # Track statistics (only for user writings, not curated)
+        if getattr(new_writing, 'category', 'user') == 'user':
+            word_count = statistics_service._calculate_word_count(writing.content)
+            statistics_service.increment_writing_created(db, word_count)
+            # Update goal progress
+            statistics_service.update_goal_progress(db)
+        
         return WritingResponse(
             id=new_writing.id,
             title=new_writing.title,
             content=new_writing.content,
             author=new_writing.author,
+            category=getattr(new_writing, 'category', 'user'),
+            genre=getattr(new_writing, 'genre', None),
             created_at=new_writing.created_at.isoformat() + "Z",
             updated_at=new_writing.updated_at.isoformat() + "Z"
         )
@@ -867,6 +1038,8 @@ async def update_writing(request: Request, writing_id: int, writing: WritingUpda
             title=updated_writing.title,
             content=updated_writing.content,
             author=updated_writing.author,
+            category=getattr(updated_writing, 'category', 'user'),
+            genre=getattr(updated_writing, 'genre', None),
             created_at=updated_writing.created_at.isoformat() + "Z",
             updated_at=updated_writing.updated_at.isoformat() + "Z"
         )
@@ -914,8 +1087,67 @@ async def get_writings_stats():
     """Get statistics about writings."""
     db = next(get_db())
     try:
-        count = writings_service.get_writings_count(db)
-        return {"total_writings": count}
+        total_count = writings_service.get_writings_count(db)
+        curated_count = writings_service.get_writings_count(db, category="curated")
+        user_count = writings_service.get_writings_count(db, category="user")
+        genres = writings_service.get_genres(db)
+        curated_genres = writings_service.get_genres(db, category="curated")
+        return {
+            "total_writings": total_count,
+            "curated_writings": curated_count,
+            "user_writings": user_count,
+            "genres": genres,
+            "curated_genres": curated_genres
+        }
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/writings/curated",
+    response_model=WritingsListResponse,
+    tags=["Writings"],
+    summary="Get Curated Amazing Writings",
+    description="Retrieve curated amazing writings from literature, speeches, and poetry."
+)
+async def get_curated_writings(skip: int = 0, limit: int = 100, genre: Optional[str] = None):
+    """Get curated amazing writings with optional genre filter."""
+    db = next(get_db())
+    try:
+        writings = writings_service.get_curated_writings(db, skip, limit, genre=genre)
+        
+        # Convert to response format
+        writing_responses = [
+            WritingResponse(
+                id=w.id,
+                title=w.title,
+                content=w.content,
+                author=w.author,
+                category=getattr(w, 'category', 'curated'),
+                genre=getattr(w, 'genre', None),
+                created_at=w.created_at.isoformat() + "Z",
+                updated_at=w.updated_at.isoformat() + "Z"
+            )
+            for w in writings
+        ]
+        
+        return WritingsListResponse(writings=writing_responses, count=len(writing_responses))
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/writings/genres",
+    tags=["Writings"],
+    summary="Get Available Genres",
+    description="Get list of available genres for filtering writings."
+)
+async def get_genres(category: Optional[str] = None):
+    """Get list of available genres, optionally filtered by category."""
+    db = next(get_db())
+    try:
+        genres = writings_service.get_genres(db, category=category)
+        return {"genres": genres, "count": len(genres)}
     finally:
         db.close()
 
@@ -992,6 +1224,1022 @@ async def get_conversation_status():
         "service": "OpenAI GPT"
     }
 
+
+# Interactive Conversation endpoints
+@app.post(
+    "/api/conversation/interactive/start",
+    response_model=InteractiveConversationResponse,
+    tags=["Conversation"],
+    summary="Start Interactive Conversation",
+    description="Start a new interactive conversation on a topic. Returns AI's opening message and audio."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def start_interactive_conversation(request: Request, conv_request: InteractiveConversationStartRequest):
+    """
+    Start a new interactive conversation on a topic.
+    
+    - **topic**: The topic to practice discussing
+    - **voice**: Voice identifier for TTS (default: af_bella)
+    - **speed**: Speech speed multiplier (0.5-2.0, default: 1.0)
+    
+    Returns both text response and audio for the AI's opening message.
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"[{request_id}] Starting interactive conversation on topic: {conv_request.topic}")
+        
+        # Start conversation with GPT
+        conversation_data = interactive_conversation_service.start_conversation(conv_request.topic)
+        ai_message = conversation_data.get("message")
+        
+        if not ai_message:
+            raise HTTPException(
+                status_code=500,
+                detail="Received empty message from conversation service"
+            )
+        
+        logger.debug(f"[{request_id}] Generated AI message (length: {len(ai_message)} chars)")
+        
+        # Generate TTS audio for the response
+        audio_url = None
+        if tts_service and ai_message:
+            try:
+                logger.debug(f"[{request_id}] Generating TTS audio for message")
+                audio, sample_rate = tts_service.generate_audio(
+                    ai_message,
+                    conv_request.voice,
+                    conv_request.speed
+                )
+                
+                # Convert audio to base64 for easy transmission
+                import base64
+                import io
+                buffer = io.BytesIO()
+                sf.write(buffer, audio, sample_rate, format='WAV')
+                buffer.seek(0)
+                audio_bytes = buffer.getvalue()
+                audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                audio_url = f"data:audio/wav;base64,{audio_base64}"
+                
+                logger.debug(f"[{request_id}] TTS audio generated successfully ({len(audio_bytes)} bytes)")
+                
+            except Exception as e:
+                logger.warning(f"[{request_id}] Failed to generate TTS audio: {e}", exc_info=True)
+                # Continue without audio if TTS fails - conversation can still proceed
+                pipeline_health.record_error(
+                    "tts_service",
+                    "TTSGenerationError",
+                    f"Failed to generate TTS for conversation: {str(e)}",
+                    context={"request_id": request_id, "message_length": len(ai_message)}
+                )
+        
+        logger.info(f"[{request_id}] Conversation started successfully")
+        
+        return InteractiveConversationResponse(
+            message=ai_message,
+            topic=conv_request.topic,
+            audio_url=audio_url
+        )
+        
+    except ServiceNotAvailableException as e:
+        logger.warning(f"[{request_id}] Interactive conversation service unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+    except ValidationException as e:
+        logger.warning(f"[{request_id}] Validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"[{request_id}] Error starting conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to start conversation"
+        )
+
+
+@app.post(
+    "/api/conversation/interactive/continue",
+    response_model=InteractiveConversationResponse,
+    tags=["Conversation"],
+    summary="Continue Interactive Conversation",
+    description="Continue an interactive conversation. Returns AI's response with text and audio."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def continue_interactive_conversation(request: Request, conv_request: InteractiveConversationContinueRequest):
+    """
+    Continue an interactive conversation.
+    
+    - **topic**: The topic being discussed
+    - **user_message**: The user's message
+    - **conversation_history**: Previous messages in the conversation
+    - **voice**: Voice identifier for TTS (default: af_bella)
+    - **speed**: Speech speed multiplier (0.5-2.0, default: 1.0)
+    
+    Returns both text response and audio for the AI's reply.
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"[{request_id}] Continuing conversation on topic: {conv_request.topic}")
+        
+        # Format conversation history with validation
+        history = []
+        for msg in conv_request.conversation_history:
+            if msg.role in ["user", "assistant"] and msg.content:
+                history.append({"role": msg.role, "content": msg.content})
+        
+        # Add user's current message
+        if conv_request.user_message:
+            history.append({"role": "user", "content": conv_request.user_message})
+        
+        logger.debug(f"[{request_id}] Continuing conversation with {len(history)} messages in history")
+        
+        # Get AI response from GPT
+        ai_message = interactive_conversation_service.continue_conversation(
+            conv_request.topic,
+            history
+        )
+        
+        if not ai_message:
+            raise HTTPException(
+                status_code=500,
+                detail="Received empty message from conversation service"
+            )
+        
+        logger.debug(f"[{request_id}] Generated AI response (length: {len(ai_message)} chars)")
+        
+        # Generate TTS audio for the response
+        audio_url = None
+        if tts_service and ai_message:
+            try:
+                logger.debug(f"[{request_id}] Generating TTS audio for response")
+                audio, sample_rate = tts_service.generate_audio(
+                    ai_message,
+                    conv_request.voice,
+                    conv_request.speed
+                )
+                
+                # Convert audio to base64 for easy transmission
+                import base64
+                import io
+                buffer = io.BytesIO()
+                sf.write(buffer, audio, sample_rate, format='WAV')
+                buffer.seek(0)
+                audio_bytes = buffer.getvalue()
+                audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+                audio_url = f"data:audio/wav;base64,{audio_base64}"
+                
+                logger.debug(f"[{request_id}] TTS audio generated successfully ({len(audio_bytes)} bytes)")
+                
+            except Exception as e:
+                logger.warning(f"[{request_id}] Failed to generate TTS audio: {e}", exc_info=True)
+                # Continue without audio if TTS fails - conversation can still proceed
+                pipeline_health.record_error(
+                    "tts_service",
+                    "TTSGenerationError",
+                    f"Failed to generate TTS for conversation: {str(e)}",
+                    context={"request_id": request_id, "message_length": len(ai_message)}
+                )
+        
+        logger.info(f"[{request_id}] Conversation continued successfully")
+        
+        return InteractiveConversationResponse(
+            message=ai_message,
+            topic=conv_request.topic,
+            audio_url=audio_url
+        )
+        
+    except ServiceNotAvailableException as e:
+        logger.warning(f"[{request_id}] Interactive conversation service unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+    except ValidationException as e:
+        logger.warning(f"[{request_id}] Validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"[{request_id}] Error continuing conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to continue conversation"
+        )
+
+
+@app.get(
+    "/api/conversation/interactive/status",
+    tags=["Conversation"],
+    summary="Check Interactive Conversation Service Status",
+    description="Check if the interactive conversation service is available."
+)
+async def get_interactive_conversation_status():
+    """Check if interactive conversation service is available."""
+    return {
+        "available": interactive_conversation_service.is_available(),
+        "service": "OpenAI GPT",
+        "tts_available": tts_service is not None
+    }
+
+
+# Rhetorical Device Practice endpoints
+@app.get(
+    "/api/rhetorical-devices/list",
+    tags=["Rhetorical Devices"],
+    summary="Get Available Rhetorical Devices",
+    description="Get a list of all available rhetorical devices with descriptions."
+)
+async def get_rhetorical_devices():
+    """Get all available rhetorical devices."""
+    devices = rhetorical_device_service.get_available_devices()
+    return {
+        "devices": devices,
+        "count": len(devices)
+    }
+
+
+@app.post(
+    "/api/rhetorical-devices/practice",
+    response_model=RhetoricalDevicePracticeResponse,
+    tags=["Rhetorical Devices"],
+    summary="Generate Rhetorical Device Practice Prompts",
+    description="Generate writing practice prompts that incorporate specific rhetorical devices for a given topic."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def generate_rhetorical_device_prompts(request: Request, practice_request: RhetoricalDevicePracticeRequest):
+    """
+    Generate rhetorical device practice prompts for a topic.
+    
+    - **topic**: The topic the user wants to practice writing about
+    - **devices**: List of rhetorical devices to incorporate (1-10 devices)
+    - **count**: Number of prompts to generate (1-10, default: 3)
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"[{request_id}] Generating {practice_request.count} prompts for topic: {practice_request.topic} with devices: {practice_request.devices}")
+        
+        prompts_data = rhetorical_device_service.generate_prompts(
+            topic=practice_request.topic,
+            devices=practice_request.devices,
+            count=practice_request.count
+        )
+        
+        # Convert to response format
+        prompts = [
+            RhetoricalDevicePrompt(
+                prompt=p["prompt"],
+                devices=p["devices"],
+                examples=p.get("examples")
+            )
+            for p in prompts_data
+        ]
+        
+        logger.info(f"[{request_id}] Generated {len(prompts)} prompts successfully")
+        
+        return RhetoricalDevicePracticeResponse(
+            prompts=prompts,
+            topic=practice_request.topic,
+            devices=practice_request.devices,
+            count=len(prompts)
+        )
+    except ServiceNotAvailableException as e:
+        logger.warning(f"[{request_id}] Rhetorical device service unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+    except ValidationException as e:
+        logger.warning(f"[{request_id}] Validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"[{request_id}] Error generating prompts: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate rhetorical device practice prompts"
+        )
+
+
+@app.get(
+    "/api/rhetorical-devices/status",
+    tags=["Rhetorical Devices"],
+    summary="Check Rhetorical Device Service Status",
+    description="Check if the rhetorical device service (GPT API) is available."
+)
+async def get_rhetorical_device_status():
+    """Check if rhetorical device service is available."""
+    return {
+        "available": rhetorical_device_service.is_available(),
+        "service": "OpenAI GPT"
+    }
+
+
+# Speech Practice endpoints
+@app.post(
+    "/api/speeches",
+    response_model=SpeechResponse,
+    tags=["Speeches"],
+    summary="Generate Practice Speech",
+    description="Generate a sophisticated practice speech for a given topic using a 5-prompt system."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def create_speech(request: Request, speech_request: SpeechCreate):
+    """
+    Generate a practice speech for a topic.
+    
+    - **topic**: The topic to generate a speech about
+    
+    This endpoint uses a sophisticated 5-prompt system to generate an eloquent,
+    intellectually sophisticated, and deeply engaging speech that can be practiced
+    and played using the TTS system.
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"[{request_id}] Generating speech for topic: {speech_request.topic}")
+        
+        # Generate speech content using the 5-prompt system
+        speech_content = speech_service.generate_speech(speech_request.topic)
+        
+        # Save to database
+        db = next(get_db())
+        try:
+            new_speech = speeches_service.create_speech(
+                db=db,
+                topic=speech_request.topic,
+                content=speech_content
+            )
+            
+            # Track statistics
+            statistics_service.increment_speech_practiced(db)
+            statistics_service.update_goal_progress(db)
+            
+            logger.info(f"[{request_id}] Speech generated successfully with ID {new_speech.id}")
+            
+            return SpeechResponse(
+                id=new_speech.id,
+                topic=new_speech.topic,
+                content=new_speech.content,
+                created_at=new_speech.created_at.isoformat() + "Z",
+                updated_at=new_speech.updated_at.isoformat() + "Z"
+            )
+        finally:
+            db.close()
+            
+    except ServiceNotAvailableException as e:
+        logger.warning(f"[{request_id}] Speech service unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+    except ValidationException as e:
+        logger.warning(f"[{request_id}] Validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"[{request_id}] Error generating speech: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate speech"
+        )
+
+
+@app.get(
+    "/api/speeches",
+    response_model=SpeechesListResponse,
+    tags=["Speeches"],
+    summary="Get All Speeches",
+    description="Retrieve all practice speeches, ordered by most recent first."
+)
+async def get_speeches(skip: int = 0, limit: int = 100, search: Optional[str] = None):
+    """Get all speeches with optional search."""
+    db = next(get_db())
+    try:
+        if search:
+            speeches = speeches_service.search_speeches(db, search, skip, limit)
+        else:
+            speeches = speeches_service.get_all_speeches(db, skip, limit)
+        
+        # Convert to response format
+        speech_responses = [
+            SpeechResponse(
+                id=s.id,
+                topic=s.topic,
+                content=s.content,
+                created_at=s.created_at.isoformat() + "Z",
+                updated_at=s.updated_at.isoformat() + "Z"
+            )
+            for s in speeches
+        ]
+        
+        return SpeechesListResponse(speeches=speech_responses, count=len(speech_responses))
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/speeches/{speech_id}",
+    response_model=SpeechResponse,
+    tags=["Speeches"],
+    summary="Get Speech by ID",
+    description="Retrieve a specific speech by its ID."
+)
+async def get_speech(speech_id: int):
+    """Get a single speech by ID."""
+    db = next(get_db())
+    try:
+        speech = speeches_service.get_speech_by_id(db, speech_id)
+        if not speech:
+            raise HTTPException(status_code=404, detail="Speech not found")
+        
+        return SpeechResponse(
+            id=speech.id,
+            topic=speech.topic,
+            content=speech.content,
+            created_at=speech.created_at.isoformat() + "Z",
+            updated_at=speech.updated_at.isoformat() + "Z"
+        )
+    finally:
+        db.close()
+
+
+@app.delete(
+    "/api/speeches/{speech_id}",
+    tags=["Speeches"],
+    summary="Delete Speech",
+    description="Delete a speech from the database."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def delete_speech(request: Request, speech_id: int):
+    """Delete a speech."""
+    db = next(get_db())
+    try:
+        success = speeches_service.delete_speech(db, speech_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Speech not found")
+        
+        return {"message": "Speech deleted successfully", "id": speech_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting speech: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete speech")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/speeches/stats",
+    tags=["Speeches"],
+    summary="Get Speeches Statistics",
+    description="Get statistics about the speeches database."
+)
+async def get_speeches_stats():
+    """Get statistics about speeches."""
+    db = next(get_db())
+    try:
+        count = speeches_service.get_speeches_count(db)
+        return {"total_speeches": count}
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/speeches/status",
+    tags=["Speeches"],
+    summary="Check Speech Service Status",
+    description="Check if the speech service (GPT API) is available."
+)
+async def get_speech_status():
+    """Check if speech service is available."""
+    return {
+        "available": speech_service.is_available(),
+        "service": "OpenAI GPT"
+    }
+
+
+# Poetry endpoints
+@app.get(
+    "/api/poetry/styles",
+    response_model=PoetryStylesResponse,
+    tags=["Poetry"],
+    summary="Get Available Poetry Styles",
+    description="Retrieve a list of available poetry styles with descriptions."
+)
+async def get_poetry_styles():
+    """Get list of available poetry styles."""
+    styles = [
+        {
+            "name": "Haiku",
+            "description": "A traditional Japanese 3-line poem with a 5-7-5 syllable pattern. Focuses on nature and moments of beauty.",
+            "example": "An old silent pond...\nA frog jumps into the pond—\nSplash! Silence again."
+        },
+        {
+            "name": "Sonnet",
+            "description": "A 14-line poem, typically with iambic pentameter. Shakespearean sonnets use ABAB CDCD EFEF GG rhyme scheme.",
+            "example": "Shall I compare thee to a summer's day?\nThou art more lovely and more temperate..."
+        },
+        {
+            "name": "Free Verse",
+            "description": "Poetry without a fixed pattern of meter or rhyme. Allows for natural flow and expression.",
+            "example": "The wind whispers secrets\nThrough the leaves\nAnd I listen."
+        },
+        {
+            "name": "Limerick",
+            "description": "A humorous 5-line poem with AABBA rhyme scheme. Often playful and witty.",
+            "example": "There once was a man from Peru\nWho dreamed he was eating his shoe\nHe woke with a fright\nIn the middle of the night\nTo find that his dream had come true."
+        },
+        {
+            "name": "Acrostic",
+            "description": "A poem where the first letter of each line spells out a word or message.",
+            "example": "S - Sunlight streaming through\nU - Understanding grows\nN - Nature's beauty shows"
+        },
+        {
+            "name": "Villanelle",
+            "description": "A 19-line poem with five tercets and a final quatrain. Uses repeated lines for emphasis.",
+            "example": "Do not go gentle into that good night,\nOld age should burn and rave at close of day..."
+        },
+        {
+            "name": "Ode",
+            "description": "A lyrical poem addressing a person, place, thing, or idea. Often celebratory in tone.",
+            "example": "O wild West Wind, thou breath of Autumn's being..."
+        },
+        {
+            "name": "Ballad",
+            "description": "A narrative poem, often with a simple rhyme scheme, telling a story or legend.",
+            "example": "The highwayman came riding—\nRiding—riding—\nThe highwayman came riding, up to the old inn-door."
+        }
+    ]
+    
+    return PoetryStylesResponse(styles=styles, count=len(styles))
+
+
+@app.get(
+    "/api/poems",
+    response_model=PoemsListResponse,
+    tags=["Poetry"],
+    summary="Get All Poems",
+    description="Retrieve all user-created poems, ordered by most recent first."
+)
+async def get_poems(skip: int = 0, limit: int = 100, search: Optional[str] = None):
+    """Get all poems with optional search."""
+    db = next(get_db())
+    try:
+        if search:
+            poems = poems_service.search_poems(db, search, skip, limit)
+        else:
+            poems = poems_service.get_all_poems(db, skip, limit)
+        
+        # Convert to response format
+        poem_responses = [
+            PoemResponse(
+                id=p.id,
+                title=p.title,
+                content=p.content,
+                style=p.style,
+                audio_url=p.audio_url,
+                created_at=p.created_at.isoformat() + "Z",
+                updated_at=p.updated_at.isoformat() + "Z"
+            )
+            for p in poems
+        ]
+        
+        return PoemsListResponse(poems=poem_responses, count=len(poem_responses))
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/poems/{poem_id}",
+    response_model=PoemResponse,
+    tags=["Poetry"],
+    summary="Get Poem by ID",
+    description="Retrieve a specific poem by its ID."
+)
+async def get_poem(poem_id: int):
+    """Get a single poem by ID."""
+    db = next(get_db())
+    try:
+        poem = poems_service.get_poem_by_id(db, poem_id)
+        if not poem:
+            raise HTTPException(status_code=404, detail="Poem not found")
+        
+        return PoemResponse(
+            id=poem.id,
+            title=poem.title,
+            content=poem.content,
+            style=poem.style,
+            audio_url=poem.audio_url,
+            created_at=poem.created_at.isoformat() + "Z",
+            updated_at=poem.updated_at.isoformat() + "Z"
+        )
+    finally:
+        db.close()
+
+
+@app.post(
+    "/api/poems",
+    response_model=PoemResponse,
+    tags=["Poetry"],
+    summary="Create New Poem",
+    description="Create a new poem with optional title, style, and audio recording."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def create_poem(request: Request, poem: PoemCreate):
+    """Create a new poem."""
+    db = next(get_db())
+    try:
+        new_poem = poems_service.create_poem(
+            db=db,
+            title=poem.title,
+            content=poem.content,
+            style=poem.style,
+            audio_url=poem.audio_url
+        )
+        
+        # Track statistics
+        word_count = statistics_service._calculate_word_count(poem.content)
+        statistics_service.increment_poem_created(db, word_count)
+        statistics_service.update_goal_progress(db)
+        
+        return PoemResponse(
+            id=new_poem.id,
+            title=new_poem.title,
+            content=new_poem.content,
+            style=new_poem.style,
+            audio_url=new_poem.audio_url,
+            created_at=new_poem.created_at.isoformat() + "Z",
+            updated_at=new_poem.updated_at.isoformat() + "Z"
+        )
+    except Exception as e:
+        logger.error(f"Error creating poem: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create poem")
+    finally:
+        db.close()
+
+
+@app.put(
+    "/api/poems/{poem_id}",
+    response_model=PoemResponse,
+    tags=["Poetry"],
+    summary="Update Poem",
+    description="Update an existing poem."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def update_poem(request: Request, poem_id: int, poem: PoemUpdate):
+    """Update an existing poem."""
+    db = next(get_db())
+    try:
+        updated_poem = poems_service.update_poem(
+            db=db,
+            poem_id=poem_id,
+            title=poem.title,
+            content=poem.content,
+            style=poem.style,
+            audio_url=poem.audio_url
+        )
+        
+        if not updated_poem:
+            raise HTTPException(status_code=404, detail="Poem not found")
+        
+        return PoemResponse(
+            id=updated_poem.id,
+            title=updated_poem.title,
+            content=updated_poem.content,
+            style=updated_poem.style,
+            audio_url=updated_poem.audio_url,
+            created_at=updated_poem.created_at.isoformat() + "Z",
+            updated_at=updated_poem.updated_at.isoformat() + "Z"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating poem: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update poem")
+    finally:
+        db.close()
+
+
+@app.delete(
+    "/api/poems/{poem_id}",
+    tags=["Poetry"],
+    summary="Delete Poem",
+    description="Delete a poem from the database."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def delete_poem(request: Request, poem_id: int):
+    """Delete a poem."""
+    db = next(get_db())
+    try:
+        success = poems_service.delete_poem(db, poem_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Poem not found")
+        
+        return {"message": "Poem deleted successfully", "id": poem_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting poem: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete poem")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/poems/stats",
+    tags=["Poetry"],
+    summary="Get Poems Statistics",
+    description="Get statistics about the poems database."
+)
+async def get_poems_stats():
+    """Get statistics about poems."""
+    db = next(get_db())
+    try:
+        count = poems_service.get_poems_count(db)
+        return {"total_poems": count}
+    finally:
+        db.close()
+
+
+# Statistics endpoints
+@app.get(
+    "/api/stats/daily",
+    response_model=DailyStatisticsResponse,
+    tags=["Statistics"],
+    summary="Get Daily Statistics",
+    description="Get daily statistics for a specific date or today."
+)
+async def get_daily_stats(date: Optional[str] = None):
+    """Get daily statistics."""
+    db = next(get_db())
+    try:
+        target_date = None
+        if date:
+            try:
+                target_date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format (YYYY-MM-DD).")
+        
+        stats = statistics_service.get_daily_stats(db, target_date)
+        return DailyStatisticsResponse(**stats)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting daily stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get daily statistics")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/stats/weekly",
+    response_model=WeeklyStatisticsResponse,
+    tags=["Statistics"],
+    summary="Get Weekly Statistics",
+    description="Get weekly statistics for the last 7 days ending on a specific date or today."
+)
+async def get_weekly_stats(end_date: Optional[str] = None):
+    """Get weekly statistics."""
+    db = next(get_db())
+    try:
+        target_end_date = None
+        if end_date:
+            try:
+                target_end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format (YYYY-MM-DD).")
+        
+        stats = statistics_service.get_weekly_stats(db, target_end_date)
+        return WeeklyStatisticsResponse(**stats)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting weekly stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get weekly statistics")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/stats/monthly",
+    response_model=MonthlyStatisticsResponse,
+    tags=["Statistics"],
+    summary="Get Monthly Statistics",
+    description="Get monthly statistics for a specific month and year or current month."
+)
+async def get_monthly_stats(month: Optional[int] = None, year: Optional[int] = None):
+    """Get monthly statistics."""
+    db = next(get_db())
+    try:
+        if month is not None and (month < 1 or month > 12):
+            raise HTTPException(status_code=400, detail="Month must be between 1 and 12.")
+        if year is not None and year < 2000:
+            raise HTTPException(status_code=400, detail="Year must be 2000 or later.")
+        
+        stats = statistics_service.get_monthly_stats(db, month, year)
+        return MonthlyStatisticsResponse(**stats)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting monthly stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get monthly statistics")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/stats/streak",
+    response_model=StreakResponse,
+    tags=["Statistics"],
+    summary="Get Streak Information",
+    description="Get the current consecutive days streak."
+)
+async def get_streak():
+    """Get streak information."""
+    db = next(get_db())
+    try:
+        streak = statistics_service.calculate_streak(db)
+        return StreakResponse(streak_days=streak)
+    except Exception as e:
+        logger.error(f"Error getting streak: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get streak information")
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/stats/summary",
+    response_model=StatisticsSummaryResponse,
+    tags=["Statistics"],
+    summary="Get Statistics Summary",
+    description="Get a summary of all statistics including streak, today's stats, weekly stats, and goals."
+)
+async def get_stats_summary():
+    """Get comprehensive statistics summary."""
+    db = next(get_db())
+    try:
+        # Update goal progress first
+        statistics_service.update_goal_progress(db)
+        
+        # Get all statistics
+        streak = statistics_service.calculate_streak(db)
+        today_stats = statistics_service.get_daily_stats(db)
+        weekly_stats = statistics_service.get_weekly_stats(db)
+        goals = statistics_service.get_all_goals(db, active_only=True)
+        
+        return StatisticsSummaryResponse(
+            streak=StreakResponse(streak_days=streak),
+            today_stats=DailyStatisticsResponse(**today_stats),
+            weekly_stats=WeeklyStatisticsResponse(**weekly_stats),
+            goals=[UserGoalResponse(**goal) for goal in goals]
+        )
+    except Exception as e:
+        logger.error(f"Error getting stats summary: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get statistics summary")
+    finally:
+        db.close()
+
+
+# Goal endpoints
+@app.get(
+    "/api/goals",
+    response_model=UserGoalsListResponse,
+    tags=["Goals"],
+    summary="Get All User Goals",
+    description="Get all user goals, optionally filtered by active status."
+)
+async def get_goals(active_only: bool = True):
+    """Get all user goals."""
+    db = next(get_db())
+    try:
+        goals = statistics_service.get_all_goals(db, active_only=active_only)
+        return UserGoalsListResponse(
+            goals=[UserGoalResponse(**goal) for goal in goals],
+            count=len(goals)
+        )
+    except Exception as e:
+        logger.error(f"Error getting goals: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to get goals")
+    finally:
+        db.close()
+
+
+@app.post(
+    "/api/goals",
+    response_model=UserGoalResponse,
+    tags=["Goals"],
+    summary="Create User Goal",
+    description="Create a new user training goal."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def create_goal(request: Request, goal_data: UserGoalCreate):
+    """Create a new user goal."""
+    db = next(get_db())
+    try:
+        goal = statistics_service.create_goal(
+            db,
+            goal_data.goal_type,
+            goal_data.target_value,
+            goal_data.period
+        )
+        
+        # Update goal progress
+        statistics_service.update_goal_progress(db)
+        
+        goal_dict = statistics_service.get_all_goals(db, active_only=False)
+        goal_dict = next((g for g in goal_dict if g["id"] == goal.id), None)
+        
+        if not goal_dict:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created goal")
+        
+        return UserGoalResponse(**goal_dict)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating goal: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create goal")
+    finally:
+        db.close()
+
+
+@app.put(
+    "/api/goals/{goal_id}",
+    response_model=UserGoalResponse,
+    tags=["Goals"],
+    summary="Update User Goal",
+    description="Update an existing user goal."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def update_goal(request: Request, goal_id: int, goal_data: UserGoalUpdate):
+    """Update a user goal."""
+    db = next(get_db())
+    try:
+        goal = statistics_service.update_goal(
+            db,
+            goal_id,
+            goal_data.target_value,
+            goal_data.is_active
+        )
+        
+        if not goal:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        
+        # Update goal progress
+        statistics_service.update_goal_progress(db)
+        
+        goal_dict = statistics_service.get_all_goals(db, active_only=False)
+        goal_dict = next((g for g in goal_dict if g["id"] == goal.id), None)
+        
+        if not goal_dict:
+            raise HTTPException(status_code=500, detail="Failed to retrieve updated goal")
+        
+        return UserGoalResponse(**goal_dict)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating goal: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update goal")
+    finally:
+        db.close()
+
+
+@app.delete(
+    "/api/goals/{goal_id}",
+    tags=["Goals"],
+    summary="Delete User Goal",
+    description="Delete a user goal."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def delete_goal(request: Request, goal_id: int):
+    """Delete a user goal."""
+    db = next(get_db())
+    try:
+        success = statistics_service.delete_goal(db, goal_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        
+        return {"message": "Goal deleted successfully", "id": goal_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting goal: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete goal")
+    finally:
+        db.close()
+
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():
@@ -1008,8 +2256,21 @@ async def startup_event():
         except:
             pass
     logger.info(f"Conversation Service: {'✓ Available' if conversation_service.is_available() else '✗ Unavailable (OpenAI API key not set)'}")
+    logger.info(f"Rhetorical Device Service: {'✓ Available' if rhetorical_device_service.is_available() else '✗ Unavailable (OpenAI API key not set)'}")
+    logger.info(f"Speech Service: {'✓ Available' if speech_service.is_available() else '✗ Unavailable (OpenAI API key not set)'}")
     logger.info(f"Rate limiting: {'Enabled' if settings.RATE_LIMIT_ENABLED else 'Disabled'}")
+    logger.info(f"Job Tracker: {'✓ Available' if job_tracker else '✗ Unavailable'}")
+    logger.info(f"Cleanup Scheduler: {'✓ Available' if cleanup_scheduler else '✗ Unavailable'}")
     logger.info(f"Debug mode: {'Enabled' if settings.DEBUG else 'Disabled'}")
+    
+    # Start cleanup scheduler
+    if cleanup_scheduler:
+        try:
+            cleanup_scheduler.start()
+            logger.info("Cleanup scheduler started")
+        except Exception as e:
+            logger.error(f"Failed to start cleanup scheduler: {e}", exc_info=True)
+    
     logger.info("=" * 60)
 
 # Shutdown event
@@ -1017,6 +2278,15 @@ async def startup_event():
 async def shutdown_event():
     """Log shutdown information and cleanup."""
     logger.info("Prose and Pause API shutting down...")
+    
+    # Stop cleanup scheduler
+    if cleanup_scheduler:
+        try:
+            cleanup_scheduler.stop()
+            logger.info("Cleanup scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping cleanup scheduler: {e}", exc_info=True)
+    
     logger.info("Shutdown complete.")
 
 if __name__ == "__main__":

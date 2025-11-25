@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Download, Video, Share2, Maximize2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logger from '../utils/logger';
 
 const VideoPlayer = ({ videoUrl }) => {
     const videoRef = useRef(null);
@@ -26,7 +27,7 @@ const VideoPlayer = ({ videoUrl }) => {
         if (videoRef.current) {
             if (!document.fullscreenElement) {
                 videoRef.current.requestFullscreen().catch((err) => {
-                    console.log('Error attempting to enable fullscreen:', err);
+                    logger.warn('Error attempting to enable fullscreen', err);
                 });
             } else {
                 document.exitFullscreen();
@@ -49,7 +50,7 @@ const VideoPlayer = ({ videoUrl }) => {
                         await navigator.clipboard.writeText(videoUrl);
                         // Could trigger a toast here if we had access to it
                     } catch (clipboardErr) {
-                        console.error('Failed to copy to clipboard:', clipboardErr);
+                        logger.error('Failed to copy to clipboard', clipboardErr);
                     }
                 }
             }
@@ -59,7 +60,7 @@ const VideoPlayer = ({ videoUrl }) => {
                 await navigator.clipboard.writeText(videoUrl);
                 // Could trigger a toast here if we had access to it
             } catch (err) {
-                console.error('Failed to copy to clipboard:', err);
+                logger.error('Failed to copy to clipboard', err);
             }
         }
     };

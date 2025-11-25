@@ -1,13 +1,25 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, Suspense, lazy, useRef, useEffect } from 'react';
 import Layout from './components/Layout';
 import ToastContainer from './components/Toast';
 import { useApp } from './context/AppContext';
 import { motion } from 'framer-motion';
+import logger from './utils/logger';
+import AriaLiveRegion from './components/AriaLiveRegion';
+import NetworkStatus from './components/NetworkStatus';
+import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
+import QuickSearchModal from './components/QuickSearchModal';
+import ShortcutsHelpModal from './components/ShortcutsHelpModal';
 
 // Lazy load components
 const TextLibrary = lazy(() => import('./components/TextLibrary'));
+const CuratedWritings = lazy(() => import('./components/CuratedWritings'));
 const TextEditor = lazy(() => import('./components/TextEditor'));
 const ConversationPractice = lazy(() => import('./components/ConversationPractice'));
+const InteractiveConversation = lazy(() => import('./components/InteractiveConversation'));
+const PoemCreator = lazy(() => import('./components/PoemCreator'));
+const SpeechPractice = lazy(() => import('./components/SpeechPractice'));
+const RhetoricalDevicePractice = lazy(() => import('./components/RhetoricalDevicePractice'));
+const ProgressDashboard = lazy(() => import('./components/ProgressDashboard'));
 
 // Loading fallback
 const ComponentLoader = () => (
@@ -19,6 +31,38 @@ const ComponentLoader = () => (
 function App() {
     const { state, setActiveTab } = useApp();
     const [editingWriting, setEditingWriting] = useState(null);
+    const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+    const shortcutsRef = useRef(null);
+    const saveHandlerRef = useRef(null);
+    const editorRef = useRef(null);
+    const shortcutsRef = useRef(null);
+    const [writings, setWritings] = useState([]);
+
+    // Load writings for quick search
+    useEffect(() => {
+        const loadWritings = async () => {
+            try {
+                const response = await getWritings(0, 100);
+                setWritings(response.writings || []);
+            } catch (err) {
+                logger.error('Failed to load writings for quick search', err);
+            }
+        };
+        loadWritings();
+    }, []);
+
+    // Sidebar navigation mapping
+    const sidebarMenuItems = [
+        { id: 'editor', key: '1' },
+        { id: 'library', key: '2' },
+        { id: 'curated', key: '3' },
+        { id: 'progress', key: '4' },
+        { id: 'speech', key: '5' },
+        { id: 'practice', key: '6' },
+        { id: 'interactive', key: '7' },
+        { id: 'rhetorical', key: '8' },
+        { id: 'poems', key: '9' },
+    ];
 
     const handleNewWriting = () => {
         setEditingWriting(null);
@@ -30,6 +74,45 @@ function App() {
         setActiveTab('editor');
     };
 
+    const handleNavigateSidebar = (number) => {
+        const menuItem = sidebarMenuItems[number - 1];
+        if (menuItem) {
+            setActiveTab(menuItem.id);
+        }
+    };
+
+    // Global keyboard shortcuts
+    useGlobalKeyboardShortcuts({
+        onQuickSearch: () => setQuickSearchOpen(true),
+        onNewWriting: handleNewWriting,
+        onSave: () => {
+            if (saveHandlerRef.current) {
+                saveHandlerRef.current();
+            }
+        },
+        onShowShortcuts: () => {
+            if (shortcutsRef.current) {
+                shortcutsRef.current.open();
+            }
+        },
+        onNavigateSidebar: (number) => {
+            const menuItems = [
+                'editor', 'library', 'curated', 'progress', 'speech',
+                'practice', 'interactive', 'rhetorical', 'poems'
+            ];
+            if (number >= 1 && number <= menuItems.length) {
+                setActiveTab(menuItems[number - 1]);
+            }
+        },
+        activeTab: state.activeTab,
+        setActiveTab: setActiveTab,
+        canSave: state.activeTab === 'editor' && !!saveHandlerRef.current,
+        onNavigateSidebar: handleNavigateSidebar,
+        activeTab: state.activeTab,
+        setActiveTab,
+        canSave: state.activeTab === 'editor' && !!saveHandlerRef.current,
+    });
+
     const handleSaveComplete = () => {
         setEditingWriting(null);
         setActiveTab('library');
@@ -40,11 +123,27 @@ function App() {
             return (
                 <Suspense fallback={<ComponentLoader />}>
                     <TextEditor
+                        ref={editorRef}
                         writing={editingWriting}
                         onSave={handleSaveComplete}
                         onCancel={() => {
                             setEditingWriting(null);
                             setActiveTab('library');
+                        }}
+                        onSaveRef={(saveFn) => {
+                            saveHandlerRef.current = saveFn;
+                        }}
+                    />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'curated') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <CuratedWritings
+                        onSelectWriting={(writing) => {
+                            logger.debug('Selected curated writing', writing);
                         }}
                     />
                 </Suspense>
@@ -55,6 +154,46 @@ function App() {
             return (
                 <Suspense fallback={<ComponentLoader />}>
                     <ConversationPractice />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'interactive') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <InteractiveConversation />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'speech') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <SpeechPractice />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'rhetorical') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <RhetoricalDevicePractice />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'poems') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <PoemCreator />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'progress') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <ProgressDashboard />
                 </Suspense>
             );
         }
@@ -101,7 +240,7 @@ function App() {
                 >
                     <div>
                         <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-                            Your Writing Library
+                            My Writings
                         </h1>
                         <p className="text-gray-400 text-base md:text-lg">
                             Explore wonderful writing through beautiful audio
@@ -128,7 +267,7 @@ function App() {
                         >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </motion.svg>
-                        <span className="relative z-10">New Writing</span>
+                        <span className="relative z-10">Create Writing</span>
                     </motion.button>
                 </motion.div>
 
@@ -139,7 +278,7 @@ function App() {
                     <TextLibrary
                         onSelectWriting={(writing) => {
                             // Could show a detail view or modal here
-                            console.log('Selected writing:', writing);
+                            logger.debug('Selected writing', writing);
                         }}
                         onEditWriting={handleEditWriting}
                     />
@@ -149,10 +288,26 @@ function App() {
     };
 
     return (
-        <Layout activeTab={state.activeTab} setActiveTab={setActiveTab}>
-            <ToastContainer />
-            {renderContent()}
-        </Layout>
+        <>
+            {/* Global ARIA Live Region for Application-Wide Announcements */}
+            <AriaLiveRegion 
+                id="app-live-region"
+                priority="polite"
+            />
+            {/* Network Status Indicator */}
+            <NetworkStatus />
+            <Layout activeTab={state.activeTab} setActiveTab={setActiveTab}>
+                <ToastContainer />
+                {renderContent()}
+            </Layout>
+            {/* Quick Search Modal */}
+            <QuickSearchModal 
+                isOpen={quickSearchOpen} 
+                onClose={() => setQuickSearchOpen(false)} 
+            />
+            {/* Keyboard Shortcuts Component */}
+            <KeyboardShortcuts ref={shortcutsRef} />
+        </>
     );
 }
 

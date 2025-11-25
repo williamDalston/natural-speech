@@ -34,7 +34,11 @@ export default defineConfig(({ mode }) => {
     mode === 'production' && VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webp}'],
+        // Offline fallback
+        navigateFallback: '/offline.html',
+        navigateFallbackDenylist: [/^\/api/],
+        // Runtime caching strategies
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -69,6 +73,55 @@ export default defineConfig(({ mode }) => {
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+            },
+          },
+          // API caching with NetworkFirst strategy
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/voices'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-voices-cache',
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/writings/genres') || url.pathname.startsWith('/api/poetry/styles'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-metadata-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 30 * 60, // 30 minutes
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/writings') && url.searchParams.has('search') === false,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-writings-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60, // 5 minutes
+              },
+              networkTimeoutSeconds: 3,
+            },
+          },
+          // Audio/Video caching
+          {
+            urlPattern: /\.(?:mp3|wav|ogg|mp4|webm)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'media-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
               },
             },
           },
@@ -113,12 +166,21 @@ export default defineConfig(({ mode }) => {
     // Code splitting
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks: (id) => {
           // Vendor chunks
-          'react-vendor': ['react', 'react-dom'],
-          'framer-motion': ['framer-motion'],
-          'icons': ['lucide-react'],
-          // Component chunks will be handled by lazy loading
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('framer-motion')) {
+              return 'framer-motion';
+            }
+            if (id.includes('lucide-react')) {
+              return 'icons';
+            }
+            // Other vendor libraries
+            return 'vendor';
+          }
         },
         // Optimize chunk file names
         chunkFileNames: 'js/[name]-[hash].js',
@@ -149,6 +211,13 @@ export default defineConfig(({ mode }) => {
   // Performance optimization
   optimizeDeps: {
     include: ['react', 'react-dom', 'framer-motion', 'lucide-react'],
+    exclude: [],
+  },
+  
+  // Build optimization
+  esbuild: {
+    legalComments: 'none',
+    treeShaking: true,
   },
   
   // Preview server config

@@ -4,6 +4,12 @@ import './index.css'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import { registerServiceWorker } from './utils/serviceWorker'
+
+// Register service worker in production
+if (import.meta.env.PROD) {
+  registerServiceWorker()
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

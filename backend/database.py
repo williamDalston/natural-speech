@@ -81,13 +81,64 @@ class Writing(Base):
     title = Column(String, nullable=True)  # Optional title
     content = Column(Text, nullable=False)  # The actual text content
     author = Column(String, nullable=True)  # Optional author name
+    category = Column(String, default="user", index=True)  # "user" or "curated" - distinguishes user writings from curated amazing writing
+    genre = Column(String, nullable=True, index=True)  # Genre/category like "Poetry", "Prose", "Speech", "Essay", etc.
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-def init_db():
-    """Initialize database tables."""
-    Base.metadata.create_all(bind=engine)
+class Speech(Base):
+    """Model for storing generated speeches for practice."""
+    __tablename__ = "speeches"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    topic = Column(String, nullable=False, index=True)  # The topic of the speech
+    content = Column(Text, nullable=False)  # The generated speech content
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Poem(Base):
+    """Model for storing user-created poems."""
+    __tablename__ = "poems"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=True)  # Optional title for the poem
+    content = Column(Text, nullable=False)  # The poem content
+    style = Column(String, nullable=True)  # Poetry style (e.g., "Haiku", "Sonnet", "Free Verse")
+    audio_url = Column(String, nullable=True)  # URL/path to recorded audio (stored as base64 or file path)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class DailyStatistics(Base):
+    """Model for tracking daily user activity statistics."""
+    __tablename__ = "daily_statistics"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(DateTime, default=datetime.utcnow, index=True, unique=True)  # Date for this statistics record
+    writings_created = Column(Integer, default=0)  # Number of writings created today
+    speeches_practiced = Column(Integer, default=0)  # Number of speeches practiced
+    poems_created = Column(Integer, default=0)  # Number of poems created
+    conversations_completed = Column(Integer, default=0)  # Number of conversations completed
+    audio_minutes_listened = Column(Float, default=0.0)  # Total minutes of audio listened
+    total_words_written = Column(Integer, default=0)  # Total words written today
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserGoal(Base):
+    """Model for storing user training goals."""
+    __tablename__ = "user_goals"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    goal_type = Column(String, nullable=False, index=True)  # 'words', 'writings', 'speeches', 'poems', 'conversations'
+    target_value = Column(Integer, nullable=False)  # Target value for the goal
+    current_value = Column(Integer, default=0)  # Current progress towards goal
+    period = Column(String, default="daily")  # 'daily', 'weekly', 'monthly'
+    is_active = Column(Boolean, default=True)  # Whether goal is currently active
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 @contextmanager

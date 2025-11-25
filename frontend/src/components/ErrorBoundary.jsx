@@ -1,32 +1,92 @@
 import React from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logger from '../utils/logger';
+import ErrorRecovery from './ErrorRecovery';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null,
+      errorId: null,
+      retryCount: 0,
+    };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return { 
+      hasError: true,
+      errorId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    logger.error('Error caught by boundary', error, { errorInfo });
     this.setState({
       error,
       errorInfo,
     });
+
+    // Report error to external service in production (optional)
+    if (process.env.NODE_ENV === 'production') {
+      // You can add error reporting service here
+      // Example: reportErrorToService(error, errorInfo);
+    }
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
-    window.location.reload();
+    this.setState({ 
+      hasError: false, 
+      error: null, 
+      errorInfo: null, 
+      errorId: null,
+      retryCount: 0,
+    });
+    // Try to reset without full page reload first
+    if (this.props.onReset) {
+      this.props.onReset();
+    } else {
+      window.location.reload();
+    }
+  };
+
+  handleRetry = () => {
+    const { retryCount } = this.state;
+    if (retryCount < 3) {
+      this.setState({ retryCount: retryCount + 1 });
+      // Attempt to recover by resetting error state
+      setTimeout(() => {
+        this.handleReset();
+      }, 500);
+    }
+  };
+
+  handleGoHome = () => {
+    window.location.href = '/';
+  };
+
+  handleGoBack = () => {
+    window.history.back();
   };
 
   render() {
     if (this.state.hasError) {
+      const { fallback: Fallback } = this.props;
+      
+      // Use custom fallback if provided
+      if (Fallback) {
+        return (
+          <Fallback 
+            error={this.state.error}
+            errorInfo={this.state.errorInfo}
+            resetError={this.handleReset}
+          />
+        );
+      }
+
       return (
         <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
           <motion.div
@@ -43,28 +103,50 @@ class ErrorBoundary extends React.Component {
                   Something went wrong
                 </h2>
                 <p className="text-gray-400 mb-4">
-                  An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
+                  An unexpected error occurred. You can try to recover by going back or reloading the page.
                 </p>
-                {process.env.NODE_ENV === 'development' && this.state.error && (
-                  <details className="mb-4">
-                    <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-400 mb-2">
-                      Error Details (Development Only)
-                    </summary>
-                    <pre className="text-xs bg-gray-900 p-4 rounded-lg overflow-auto text-red-400">
-                      {this.state.error.toString()}
-                      {this.state.errorInfo?.componentStack}
-                    </pre>
-                  </details>
+                
+                {this.state.errorId && (
+                  <p className="text-xs text-gray-500 mb-4">
+                    Error ID: {this.state.errorId}
+                  </p>
                 )}
-                <motion.button
-                  onClick={this.handleReset}
-                  className="btn-primary flex items-center gap-2"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <RefreshCw size={18} />
-                  <span>Reload Page</span>
-                </motion.button>
+
+                <ErrorRecovery
+                  error={this.state.error}
+                  onRetry={this.handleRetry}
+                  onDismiss={this.handleReset}
+                  retryCount={this.state.retryCount}
+                  maxRetries={3}
+                  showDetails={process.env.NODE_ENV === 'development'}
+                  title="Application Error"
+                  retryLabel="Try Again"
+                  dismissLabel="Reload Page"
+                />
+
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <motion.button
+                    onClick={this.handleGoBack}
+                    className="btn-secondary flex items-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    aria-label="Go back to previous page"
+                  >
+                    <ArrowLeft size={18} aria-hidden="true" />
+                    <span>Go Back</span>
+                  </motion.button>
+                  
+                  <motion.button
+                    onClick={this.handleGoHome}
+                    className="btn-secondary flex items-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    aria-label="Go to home page"
+                  >
+                    <Home size={18} aria-hidden="true" />
+                    <span>Go Home</span>
+                  </motion.button>
+                </div>
               </div>
             </div>
           </motion.div>

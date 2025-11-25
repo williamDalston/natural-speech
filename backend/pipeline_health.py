@@ -107,6 +107,7 @@ class PipelineHealthMonitor:
             "background_tasks",
             "cache_manager",
             "rate_limiter",
+            "job_tracker",
             "cleanup_scheduler"
         ]
         

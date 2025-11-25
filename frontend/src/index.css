@@ -461,6 +461,48 @@ a:hover::after {
   input[type="radio"] {
     @apply min-h-[44px] min-w-[44px];
   }
+
+  /* Optimize touch interactions */
+  * {
+    touch-action: manipulation;
+  }
+
+  /* Reduce animations on mobile for better performance */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* But keep essential animations */
+  .animate-spin,
+  [class*="animate-"]:not([class*="animate-spin"]) {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/* Touch manipulation optimization */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Reduce motion on mobile for better performance */
+@media (max-width: 768px) {
+  /* Reduce complex animations */
+  [class*="motion-"] {
+    will-change: auto;
+  }
+
+  /* Optimize transforms */
+  * {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
 }
 
 /* Small mobile devices (phones in portrait) */
@@ -495,6 +537,37 @@ html {
   text-size-adjust: 100%;
 }
 
+/* Prevent layout shifts - reserve space for dynamic content */
+.text-container {
+  min-height: 1.5rem; /* Reserve minimum height for text */
+  will-change: contents; /* Optimize for content changes */
+}
+
+/* Smooth text rendering */
+* {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent flash of unstyled content */
+.message-bubble {
+  contain: layout style paint;
+  will-change: transform, opacity;
+}
+
+/* Smooth transitions for all text elements */
+p, span, div, h1, h2, h3, h4, h5, h6 {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Prevent content jumping */
+.typing-container {
+  min-height: 1.5rem;
+  display: inline-block;
+  vertical-align: top;
+}
+
 /* Safe area insets for devices with notches */
 @supports (padding: max(0px)) {
   body {
@@ -513,6 +586,19 @@ kbd {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.75rem;
   line-height: 1.5;
+}
+
+/* Screen reader only - visually hidden but accessible to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 /* Skip to main content link for accessibility - WCAG 2.4.1 */
@@ -613,8 +699,79 @@ html {
   .glass-card,
   .sidebar,
   button,
-  .skip-link {
+  .skip-link,
+  nav,
+  header,
+  footer {
     display: none;
+  }
+
+  body {
+    background: white;
+    color: black;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  /* Print-friendly writing styles */
+  .print-writing {
+    max-width: 100%;
+    margin: 0;
+    padding: 2cm;
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  .print-writing h1 {
+    font-size: 24pt;
+    margin-bottom: 0.5em;
+    page-break-after: avoid;
+    color: black;
+  }
+
+  .print-writing .author {
+    font-size: 14pt;
+    color: #666;
+    margin-bottom: 1em;
+    font-style: italic;
+  }
+
+  .print-writing .metadata {
+    font-size: 10pt;
+    color: #888;
+    margin-bottom: 2em;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 1em;
+  }
+
+  .print-writing .content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: black;
+  }
+
+  /* Page breaks */
+  .print-page-break {
+    page-break-before: always;
+  }
+
+  /* Avoid breaking inside content */
+  .print-writing .content p {
+    page-break-inside: avoid;
+  }
+
+  /* Print footer */
+  @page {
+    margin: 2cm;
+    size: A4;
+  }
+
+  @page :first {
+    margin-top: 2cm;
+  }
+
+  /* Hide non-essential elements */
+  .no-print {
+    display: none !important;
   }
 }
 

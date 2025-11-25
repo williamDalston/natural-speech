@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Play, Pause, Trash2, Download, Loader2, MessageSquare, RefreshCw } from 'lucide-react';
+import { Mic, MicOff, Play, Pause, Trash2, Download, Loader2, MessageSquare, RefreshCw, Clock } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
+import { useAutoSave } from '../hooks/useAutoSave';
+import DraftRecovery from './DraftRecovery';
+import logger from '../utils/logger';
 
 const STORAGE_KEY = 'conversation_recordings';
 
@@ -34,11 +37,32 @@ const ConversationPractice = () => {
     const [currentRecording, setCurrentRecording] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showDraftRecovery, setShowDraftRecovery] = useState(false);
     
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const audioRef = useRef(null);
     const { success, error: showError } = useToast();
+
+    // Auto-save hook
+    const storageKey = 'conversation_practice_draft';
+    const { isSaving, lastSaved, hasUnsavedChanges, clearDraft, recoverDraft } = useAutoSave(
+        storageKey,
+        { topic, prompts, currentPromptIndex },
+        {
+            interval: 30000,
+            saveOnBlur: true,
+            saveBeforeUnload: true,
+        }
+    );
+
+    // Check for draft on mount
+    useEffect(() => {
+        const draft = recoverDraft();
+        if (draft && (draft.topic || (draft.prompts && draft.prompts.length > 0))) {
+            setShowDraftRecovery(true);
+        }
+    }, [recoverDraft]);
 
     // Load recordings from local storage on mount
     useEffect(() => {
@@ -49,7 +73,7 @@ const ConversationPractice = () => {
                 setRecordings(parsed);
             }
         } catch (err) {
-            console.error('Failed to load recordings:', err);
+            logger.error('Failed to load recordings', err);
         }
     }, []);
 
@@ -58,7 +82,7 @@ const ConversationPractice = () => {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(recordings));
         } catch (err) {
-            console.error('Failed to save recordings:', err);
+            logger.error('Failed to save recordings', err);
         }
     }, [recordings]);
 
@@ -78,6 +102,8 @@ const ConversationPractice = () => {
             setPrompts(data.prompts || []);
             if (data.prompts && data.prompts.length > 0) {
                 success(`Generated ${data.prompts.length} practice prompts!`);
+                // Clear draft after successful generation
+                clearDraft();
             }
         } catch (err) {
             const errorMsg = err.message || 'Failed to generate prompts';
@@ -86,6 +112,23 @@ const ConversationPractice = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRecoverDraft = (draftData) => {
+        if (draftData.topic) setTopic(draftData.topic);
+        if (draftData.prompts && draftData.prompts.length > 0) {
+            setPrompts(draftData.prompts);
+            if (draftData.currentPromptIndex !== undefined) {
+                setCurrentPromptIndex(draftData.currentPromptIndex);
+            }
+        }
+        setShowDraftRecovery(false);
+        success('Draft recovered');
+    };
+
+    const handleDiscardDraft = () => {
+        clearDraft();
+        setShowDraftRecovery(false);
     };
 
     const startRecording = async () => {
@@ -127,7 +170,7 @@ const ConversationPractice = () => {
             setIsRecording(true);
             success('Recording started');
         } catch (err) {
-            console.error('Error starting recording:', err);
+            logger.error('Error starting recording', err);
             showError('Failed to start recording. Please check microphone permissions.');
         }
     };
@@ -231,6 +274,32 @@ const ConversationPractice = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card p-6"
             >
+                {/* Auto-save indicator */}
+                <div className="flex items-center justify-end gap-2 text-sm mb-4">
+                    {isSaving && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex items-center gap-1.5 text-blue-400"
+                        >
+                            <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            <span>Saving...</span>
+                        </motion.div>
+                    )}
+                    {!isSaving && lastSaved && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex items-center gap-1.5 text-gray-400"
+                            title={`Last saved: ${lastSaved.toLocaleTimeString()}`}
+                        >
+                            <Clock size={14} />
+                            <span className="text-xs">
+                                Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </motion.div>
+                    )}
+                </div>
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex-1 min-w-[200px]">
                         <label className="block text-sm font-medium text-gray-400 mb-2">
@@ -315,16 +384,27 @@ const ConversationPractice = () => {
                         </div>
                         <motion.div
                             key={currentPromptIndex}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50"
+                            initial={{ opacity: 0, x: 20, scale: 0.98 }}
+                            animate={{ opacity: 1, x: 0, scale: 1 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50 min-h-[100px]"
                         >
-                            <p className="text-gray-300 text-lg leading-relaxed">
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.1 }}
+                                className="text-gray-300 text-lg leading-relaxed"
+                            >
                                 {currentPrompt?.question}
-                            </p>
-                            <p className="text-gray-500 text-sm mt-2">
+                            </motion.p>
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.2 }}
+                                className="text-gray-500 text-sm mt-2"
+                            >
                                 {currentPrompt?.context}
-                            </p>
+                            </motion.p>
                         </motion.div>
 
                         {/* Recording Controls */}
@@ -428,6 +508,17 @@ const ConversationPractice = () => {
                 onPause={handleAudioPause}
                 className="hidden"
             />
+
+            {/* Draft Recovery Modal */}
+            {showDraftRecovery && (
+                <DraftRecovery
+                    storageKey={storageKey}
+                    onRecover={handleRecoverDraft}
+                    onDiscard={handleDiscardDraft}
+                    onClose={() => setShowDraftRecovery(false)}
+                    title="Recover Conversation Draft"
+                />
+            )}
         </div>
     );
 };
