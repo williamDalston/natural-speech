@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 // Lazy load components
 const TextLibrary = lazy(() => import('./components/TextLibrary'));
 const TextEditor = lazy(() => import('./components/TextEditor'));
+const ConversationPractice = lazy(() => import('./components/ConversationPractice'));
 
 // Loading fallback
 const ComponentLoader = () => (
@@ -46,6 +47,14 @@ function App() {
                             setActiveTab('library');
                         }}
                     />
+                </Suspense>
+            );
+        }
+
+        if (state.activeTab === 'practice') {
+            return (
+                <Suspense fallback={<ComponentLoader />}>
+                    <ConversationPractice />
                 </Suspense>
             );
         }

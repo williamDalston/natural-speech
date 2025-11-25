@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, FileText, Menu, X } from 'lucide-react';
+import { BookOpen, FileText, Menu, X, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 import BackgroundDecorations from './BackgroundDecorations';
 
@@ -8,6 +8,7 @@ const Sidebar = ({ isOpen, setIsOpen, activeTab, setActiveTab }) => {
     const menuItems = [
         { id: 'library', icon: BookOpen, label: 'Library' },
         { id: 'editor', icon: FileText, label: 'New Writing' },
+        { id: 'practice', icon: MessageCircle, label: 'Conversation Practice' },
     ];
 
     return (

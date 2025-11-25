@@ -15,4 +15,5 @@ psutil
 loguru
 python-dotenv
 requests
+openai>=1.0.0
 --extra-index-url https://download.pytorch.org/whl/cpu

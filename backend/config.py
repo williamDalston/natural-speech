@@ -84,6 +84,10 @@ class Config:
         self.LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
         self.LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
         self.RELOAD: bool = os.getenv("RELOAD", "False").lower() == "true"
+        
+        # OpenAI Configuration (for conversation practice)
+        self.OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+        self.OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     
     @property
     def cors_origins_list(self) -> List[str]:

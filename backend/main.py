@@ -36,6 +36,7 @@ from performance_monitor import PerformanceMonitor
 from rate_limiter import RateLimiter
 from data_service import data_service
 from writings_service import writings_service
+from conversation_service import conversation_service
 from database import get_db, init_db, get_db_health, get_pipeline_stats
 from pipeline_health import (
     pipeline_health,
@@ -50,7 +51,8 @@ from exceptions import (
 )
 from models import (
     ErrorResponse, HealthResponse, StatusResponse, VoicesResponse, TTSRequest,
-    WritingCreate, WritingUpdate, WritingResponse, WritingsListResponse
+    WritingCreate, WritingUpdate, WritingResponse, WritingsListResponse,
+    ConversationPromptRequest, ConversationPromptsResponse, ConversationPrompt
 )
 from logger_config import logger
 
@@ -917,6 +919,79 @@ async def get_writings_stats():
     finally:
         db.close()
 
+
+# Conversation Practice endpoints
+@app.post(
+    "/api/conversation/prompts",
+    response_model=ConversationPromptsResponse,
+    tags=["Conversation"],
+    summary="Generate Conversation Practice Prompts",
+    description="Generate conversation practice prompts for a given topic using GPT."
+)
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute" if settings.RATE_LIMIT_ENABLED else None)
+async def generate_conversation_prompts(request: Request, prompt_request: ConversationPromptRequest):
+    """
+    Generate conversation practice prompts for a topic.
+    
+    - **topic**: The topic the user wants to practice speaking about
+    - **count**: Number of prompts to generate (1-10, default: 5)
+    """
+    request_id = getattr(request.state, 'request_id', 'unknown')
+    
+    try:
+        logger.info(f"[{request_id}] Generating {prompt_request.count} prompts for topic: {prompt_request.topic}")
+        
+        prompts_data = conversation_service.generate_prompts(
+            topic=prompt_request.topic,
+            count=prompt_request.count
+        )
+        
+        # Convert to response format
+        prompts = [
+            ConversationPrompt(question=p["question"], context=p["context"])
+            for p in prompts_data
+        ]
+        
+        logger.info(f"[{request_id}] Generated {len(prompts)} prompts successfully")
+        
+        return ConversationPromptsResponse(
+            prompts=prompts,
+            topic=prompt_request.topic,
+            count=len(prompts)
+        )
+    except ServiceNotAvailableException as e:
+        logger.warning(f"[{request_id}] Conversation service unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
+    except ValidationException as e:
+        logger.warning(f"[{request_id}] Validation error: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"[{request_id}] Error generating prompts: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate conversation prompts"
+        )
+
+
+@app.get(
+    "/api/conversation/status",
+    tags=["Conversation"],
+    summary="Check Conversation Service Status",
+    description="Check if the conversation service (GPT API) is available."
+)
+async def get_conversation_status():
+    """Check if conversation service is available."""
+    return {
+        "available": conversation_service.is_available(),
+        "service": "OpenAI GPT"
+    }
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():
@@ -932,6 +1007,7 @@ async def startup_event():
             logger.info(f"Available voices: {len(voices)}")
         except:
             pass
+    logger.info(f"Conversation Service: {'✓ Available' if conversation_service.is_available() else '✗ Unavailable (OpenAI API key not set)'}")
     logger.info(f"Rate limiting: {'Enabled' if settings.RATE_LIMIT_ENABLED else 'Disabled'}")
     logger.info(f"Debug mode: {'Enabled' if settings.DEBUG else 'Disabled'}")
     logger.info("=" * 60)

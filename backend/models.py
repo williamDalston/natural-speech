@@ -167,3 +167,36 @@ class VoicesResponse(BaseModel):
             }
         }
 
+
+class ConversationPromptRequest(BaseModel):
+    """Request model for generating conversation practice prompts."""
+    topic: str = Field(..., min_length=1, max_length=200, description="Topic to practice speaking about")
+    count: int = Field(default=5, ge=1, le=10, description="Number of prompts to generate (1-10)")
+
+    @validator('topic')
+    def validate_topic(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Topic cannot be empty or only whitespace")
+        return v.strip()
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "topic": "climate change",
+                "count": 5
+            }
+        }
+
+
+class ConversationPrompt(BaseModel):
+    """Model for a single conversation prompt."""
+    question: str = Field(..., description="The conversation prompt question")
+    context: str = Field(..., description="Context about the topic")
+
+
+class ConversationPromptsResponse(BaseModel):
+    """Response model for conversation prompts."""
+    prompts: list[ConversationPrompt]
+    topic: str
+    count: int
+

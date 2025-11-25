@@ -4,7 +4,13 @@ import { visualizer } from 'rollup-plugin-visualizer'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // GitHub Pages base path - set via environment variable or default to root
+  const base = process.env.GITHUB_PAGES === 'true' 
+    ? (process.env.REPO_NAME ? `/${process.env.REPO_NAME}/` : '/')
+    : '/';
+
+  return {
   // Vitest configuration (for testing)
   test: {
     globals: true,
@@ -69,9 +75,9 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       manifest: {
-        name: 'Natural Speech - AI Text to Speech & Avatar Generator',
-        short_name: 'Natural Speech',
-        description: 'Transform your text into lifelike speech and AI-generated talking avatars',
+        name: 'Prose & Pause - Writing Through Beautiful Audio',
+        short_name: 'Prose & Pause',
+        description: 'Explore wonderful writing through beautiful audio',
         theme_color: '#1e1b4b',
         background_color: '#0f172a',
         display: 'standalone',
@@ -156,4 +162,8 @@ export default defineConfig(({ mode }) => ({
     port: 5173,
     host: true,
   },
-}))
+  
+  // Base path for GitHub Pages
+  base: base,
+  };
+})
